@@ -2,7 +2,9 @@
 Owner answers and standing rules. One entry each: date (UTC), who decided, rule. Grep here before asking the owner anything.
 
 ## Active Rules Digest
-- (none yet)
+- Only Mase and the coordinator write the platform memory index; only Mase merges PRs (2026-11-04).
+- Threads over 30 min check in and commit+push every 30 min; no workflows or helper agents unless Mase asks; short replies (2026-11-04).
+- Project-specific rules: pending from Mase (2026-11-04).
 
 ## Log
 - 2026-11-04, Mase: project "Quantbrite Automation" goal is an automated qFACS workflow: input .fcs files + experiment setup sheet (e.g. Exp2281_qFACS_Setup.xlsx) -> calculated antigens per cell, using BD PE Quantibrite bead calibration. Code repo: https://github.com/masonberger4/qFACS.
