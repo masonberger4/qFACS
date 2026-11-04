@@ -1,0 +1,3 @@
+<!-- proposal by Review prior qFACS workbook work at 2026-11-04 22:21:42Z; target: results.md; reason: baseline result from prior workbook; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f; PR https://github.com/masonberger4/qFACS/pull/1; status: open -->
+## Excel v1 workbook baseline (2026-11-04)
+Plate 1 (Exp2290 per workbook; likely Exp2281 Plate 1) recalculated in LibreOffice: bead slope 0.977, R² 0.9995, PASS. Antigens/cell (ABC, F/P assumed 1 for BioLegend Abs): H1975 CD58 80,400, B7H3 89,000 (both top conc above High bead), DLL3 ND; A549 CD58 56,800, B7H3 62,700, DLL3 ND. Use as regression reference for any new pipeline.
