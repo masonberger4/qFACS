@@ -5,5 +5,5 @@
 - CURATOR: standing thread "Run memory curator" (in ACL.json writers) applies ONLY changes Mase approves in chat; pushes to a branch and opens a PR into `memory`.
 - DREAMING: daily out-of-band pass (routine, e.g. 06:00 UTC) reviews memory + transcripts, writes proposals only; Mase approves in chat; curator applies. Steps: skill_drafts/qfacs-dream.md; cursor in scratch/dreamer/cursor.json.
 - AUTONOMY: when Mase is away keep work moving; easily-undone decisions need no ask. Hard-to-undo (purchases, merges, deletions, memory rule changes) wait.
-- STANDING RULES: (1) Threads over 30 min check in and commit+push every 30 min. (2) Project-specific rules: pending from Mase (see decisions.md). (3) Usage: no workflows/helper agents unless asked; short replies.
+- STANDING RULES: (1) Threads over 30 min check in and commit+push every 30 min. (2) Project-specific rules: none yet; Mase adds them as we go (decisions.md). (3) Usage: no workflows/helper agents unless asked; short replies.
 - POINTERS: code https://github.com/masonberger4/qFACS. Thread registry: memory/threads.md. Dream reports: memory/proposals/dream_*.md. Live status: memory/status.md.
