@@ -12,3 +12,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v6 | 2026-11-04 22:06:58Z | coordinator | INDEX.md | edit | Mase: no project-specific standing rules yet | cmsg_01Y3oxsYABfATcqbm4kp4uVBGfpWMCpEixpKGWfWmHHq6w | cf3ddcc8ef -> 20222e8ff2 |
 | v7 | 2026-11-04 22:07:47Z | coordinator | threads.md | edit | register curator and dreaming routine | thread: Set up project memory system | 0f460a8c62 -> 9e2d021525 |
 | v8 | 2026-11-04 22:07:50Z | coordinator | status.md | edit | setup status | thread: Set up project memory system | fe74fe510c -> c143b24acd |
+| v9 | 2026-11-04 22:07:58Z | coordinator | INDEX.md | edit | fix dream report path, routine created | thread: Set up project memory system | 20222e8ff2 -> 263c52bc58 |
