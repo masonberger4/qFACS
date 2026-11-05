@@ -107,7 +107,8 @@ def _write_kv(ws, sh: S.Sheet, values: dict):
     for i, f in enumerate(sh.fields):
         r = S.HEADER_ROW + i
         ws.cell(r, 1, f.header).font = Font(bold=True)
-        c = ws.cell(r, 2, _xl(values.get(f.key)))
+        v = values.get(f.key)
+        c = ws.cell(r, 2, _xl(S.SUGGESTED.get(f.key) if v in (None, "") else v))
         c.fill, c.border = INPUT_FILL, BOX
         if f.help:
             ws.cell(r, 3, f.help).font = HELP_FONT
