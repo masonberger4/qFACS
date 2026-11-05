@@ -1,4 +1,4 @@
-<!-- proposal by Review prior qFACS workbook work at 2026-11-05 21:00:32Z; target: decisions.md; reason: Mase's inline edits to build plan; link: https://claude.ai/artifact/MKhhyuQpTo8xxKecP1LEhv; status: open -->
+<!-- proposal by Review prior qFACS workbook work at 2026-11-05 21:00:32Z; target: decisions.md; reason: Mase's inline edits to build plan; link: https://claude.ai/artifact/MKhhyuQpTo8xxKecP1LEhv; status: merged v26 -->
 ## Build plan edits (2026-11-05, Mase, inline in plan doc)
 - Users: Mase and other lab members (plural).
 - Never hard-code reagent values: F/P, valency, concentration, catalog #, lot #, PE bead lot values all user-entered.
