@@ -1,3 +1,6 @@
-<!-- proposal by Review prior qFACS workbook work at 2026-11-04 22:21:42Z; target: results.md; reason: baseline result from prior workbook; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f; PR https://github.com/masonberger4/qFACS/pull/1; status: open -->
-## Excel v1 workbook baseline (2026-11-04)
-Plate 1 (Exp2290 per workbook; likely Exp2281 Plate 1) recalculated in LibreOffice: bead slope 0.977, R² 0.9995, PASS. Antigens/cell (ABC, F/P assumed 1 for BioLegend Abs): H1975 CD58 80,400, B7H3 89,000 (both top conc above High bead), DLL3 ND; A549 CD58 56,800, B7H3 62,700, DLL3 ND. Use as regression reference for any new pipeline.
+<!-- proposal by Review prior qFACS workbook work at 2026-11-05 21:17:54Z; target: results.md; reason: phase 2 results and phase 3 feasibility; link: https://github.com/masonberger4/qFACS/pull/2; status: open -->
+## Phase 2 engine (2026-11-05, PR #2)
+- qfacs analyze reproduces Excel v1 Plate 1 to 0.1% (regression test).
+- Exp2290 Set 2 Plate 1 (data: /mnt/project-files/Plate_001.zip .fcs, 02-Nov-2026.wsp, FlowJo exports Plate1_U87.xls / Plate1_A431.xls, bead Tube_001 = same bead export as v1). Layout assumed U-87 MG rows A-D, A431 E-H (CD58, B7H3, DLL3, mIgG1), 50 ug/mL, 1.8x. With PLACEHOLDER F/P (1,1,1.357,1) and bead lot 42618 values: A431 CD58 130,000, B7H3 120,000, DLL3 ND; U-87 MG CD58 53,500, B7H3 89,600, DLL3 4,490 (not saturated). Results: /mnt/project-files/results/.
+- Phase 3 feasibility: FlowKit 1.3.2 loads 02-Nov-2026.wsp (groups A431, U87 MG; gates Cells > Single Cells > Live) and applies it to Plate_001 .fcs in <1 s. Live counts within ~0.5% of FlowJo; geometric mean of raw B5 (575)-A is ~3% (max 6%) higher than FlowJo's: FlowJo's gMFI definition/transform still to match.
+- FCS keywords from FACSChorus: plateid (Plate_001), wellid (A01), bdspectral unmixing method SpectralFX; channels are raw detectors (e.g. B5 (575)-A), no unmixed parameters in these files.
