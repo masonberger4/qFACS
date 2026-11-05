@@ -1,0 +1,2 @@
+<!-- proposal by Review prior qFACS workbook work at 2026-11-04 22:22:06Z; target: INDEX.md; reason: index pointer to prior work, per coordinator; link: PR https://github.com/masonberger4/qFACS/pull/1; status: approved, sent to coordinator for index -->
+- POINTERS (add): Prior Excel v1 workbook: /mnt/project-files/prior_work/excel_v1/ (review: prior_work/REVIEW_excel_v1.md) and repo legacy/excel_v1 (PR #1). Code base branch is `main` (README-only seed); memory stays on `memory`.
