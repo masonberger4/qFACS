@@ -33,3 +33,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v27 | 2026-11-05 21:36:45Z | Run memory curator | data.md | edit | dream 2026-11-05 D1: prior work and input formats | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | f72f09aab6 -> 2eb11777ec |
 | v28 | 2026-11-05 21:36:46Z | Run memory curator | results.md | edit | dream 2026-11-05 D1: phase 2 engine results | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | ead9b3f38a -> 4a35acbf27 |
 | v29 | 2026-11-05 21:36:47Z | Run memory curator | status.md | edit | dream 2026-11-05 S1 (+D1 build-plan line) | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | c143b24acd -> d070068e91 |
+| v30 | 2026-11-05 21:36:48Z | Run memory curator | threads.md | edit | dream 2026-11-05 T1: registry update | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | 9e2d021525 -> 1d072c545e |
