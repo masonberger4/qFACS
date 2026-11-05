@@ -37,3 +37,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v31 | 2026-11-05 21:36:49Z | Run memory curator | lessons.md | edit | dream 2026-11-05 L1: three lessons | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | 7e77b12c38 -> 879c3e1279 |
 | v32 | 2026-11-05 21:36:58Z | Run memory curator | proposals/review-prior-qfacs-workbook-work__decisions.md | edit | mark proposal merged v26 | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | 0289341ec3 -> 384fb96931 |
 | v33 | 2026-11-05 21:37:01Z | Run memory curator | proposals/dreamer__decisions.md | edit | mark proposal merged v26 | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | 048270d9cf -> 788fc44218 |
+| v34 | 2026-11-05 21:37:02Z | Run memory curator | proposals/review-prior-qfacs-workbook-work__data.md | edit | mark proposal merged v27 | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVB91VKDPp4Ne3kzuEh7mmzRz | 8babd9fcb8 -> 86d4c92a97 |

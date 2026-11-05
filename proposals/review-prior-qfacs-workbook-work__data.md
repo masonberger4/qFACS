@@ -1,4 +1,4 @@
-<!-- proposal by Review prior qFACS workbook work at 2026-11-04 22:21:39Z; target: data.md; reason: record prior-work files and input formats; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f; PR https://github.com/masonberger4/qFACS/pull/1; status: open -->
+<!-- proposal by Review prior qFACS workbook work at 2026-11-04 22:21:39Z; target: data.md; reason: record prior-work files and input formats; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f; PR https://github.com/masonberger4/qFACS/pull/1; status: merged v27 -->
 ## Prior work and input formats (2026-11-04, thread "Review prior qFACS workbook work")
 - /mnt/project-files/prior_work/excel_v1/: Excel-only workbook from an earlier session (build_qfacs_xl.py, qFACS_Import.pq, master template, Plate1 example). Also in repo legacy/excel_v1/ (PR #1 into new `main`; code base branch is `main`, memory stays on `memory`).
 - That workbook reads FlowJo table exports (.xls), not .fcs: "<PlateID> <CellLine>.xls" per cell line, PE stat "Geometric Mean (B5 (575)-A)", bead export name contains "bead" with gates Low / Med Low / Med High / High.
