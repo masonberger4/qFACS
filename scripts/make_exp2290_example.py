@@ -1,6 +1,6 @@
 """Build the setup for the Exp2290 Set 2 Plate 1 example (U-87 MG rows A-D, A431 rows E-H).
 
-Layout and CD58/B7H3 F/P confirmed by Mase (2026-11-05). DLL3 F/P is the vial-label value from the v1 workbook;
+Layout and CD58/B7H3 F/P confirmed by Mase (2026-11-05). DLL3 F/P 1.357 (vial label) confirmed too;
 the isotype F/P is unknown. Bead lot values are from the v1 workbook and still need checking against the kit flyer.
 """
 import sys
@@ -24,7 +24,7 @@ s.reagents = [
     dict(name="B7H3", target="CD276 (B7-H3)", is_isotype="N", host="Mouse", isotype="IgG1, κ", clone="MIH42", vendor="BioLegend",
          catalog="351004", lot="B487135", fp_ratio=1.2, matched_isotype="mIgG1", notes="F/P confirmed by Mase (Exp2281 Design sheet)"),
     dict(name="DLL3", target="DLL3", is_isotype="N", host="Rabbit", isotype="(chimeric)", clone="SC16.15", vendor="Novus",
-         catalog="NBP3-45128PE", lot="D224308", fp_ratio=1.357, matched_isotype="mIgG1", notes="F/P 1.357 from the vial label in the v1 workbook; blank on the Exp2281 Design sheet, confirm"),
+         catalog="NBP3-45128PE", lot="D224308", fp_ratio=1.357, matched_isotype="mIgG1", notes="F/P 1.357 from the vial label, confirmed by Mase 2026-11-05"),
     dict(name="mIgG1", is_isotype="Y", host="Mouse", isotype="IgG1, κ", clone="MOPC-21", vendor="BioLegend", catalog="400114",
          notes="F/P not given ('-' on the Exp2281 Design sheet): isotype subtracted in PE units"),
 ]
