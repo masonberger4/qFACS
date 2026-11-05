@@ -32,6 +32,7 @@ class WellResult:
     gmfi: float | None = None
     pe: float | None = None
     blank_pe: float | None = None
+    net_pe: float | None = None        # PE minus the no-antibody background
     abc: float | None = None
     iso_abc: float | None = None
     specific: float | None = None
@@ -199,13 +200,15 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
         else:
             r.flags.append("no no-antibody well: background not subtracted")
         reag = setup.reagent(r.well.reagent)
-        r.abc = (r.pe - (r.blank_pe or 0.0)) / reag["fp_ratio"]
+        r.net_pe = r.pe - (r.blank_pe or 0.0)
+        r.abc = r.net_pe / reag["fp_ratio"] if reag.get("fp_ratio") else None
 
     # ---- isotype subtraction
     iso_pts = defaultdict(list)  # (isotype, cell line, plate) -> [(conc, abc)]
     for r in res.wells:
-        if r.abc is not None and setup.reagent(r.well.reagent).get("is_isotype") == "Y":
-            iso_pts[(r.well.reagent, r.well.cell_line, r.well.plate_id)].append((r.well.conc_ug_ml, r.abc))
+        if r.net_pe is not None and setup.reagent(r.well.reagent).get("is_isotype") == "Y":
+            # kept in PE units; converted with the isotype's F/P, or the antibody's when the isotype F/P is blank
+            iso_pts[(r.well.reagent, r.well.cell_line, r.well.plate_id)].append((r.well.conc_ug_ml, r.net_pe))
     for r in res.wells:
         reag = setup.reagent(r.well.reagent) if r.well.reagent else None
         if r.abc is None or reag.get("is_isotype") == "Y":
@@ -220,7 +223,13 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             r.specific = r.abc
             r.flags.append("isotype data missing: not subtracted")
         else:
-            r.iso_abc, outside = interp_log(pts, r.well.conc_ug_ml)
+            iso_pe, outside = interp_log(pts, r.well.conc_ug_ml)
+            iso_fp = setup.reagent(iso).get("fp_ratio")
+            if iso_fp:
+                r.iso_abc = iso_pe / iso_fp
+            else:
+                r.iso_abc = iso_pe / reag["fp_ratio"]
+                r.flags.append("isotype F/P unknown: subtracted in PE units (assumes equal F/P)")
             if outside:
                 r.flags.append("concentration outside isotype range (nearest isotype point used)")
             r.specific = r.abc - r.iso_abc
@@ -263,6 +272,8 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             fr.flags.append("no matched isotype: not subtracted")
         elif any(r for r in rs if "isotype data missing: not subtracted" in r.flags):
             fr.flags.append("isotype data missing: not subtracted")
+        elif any(r for r in rs if "isotype F/P unknown: subtracted in PE units (assumes equal F/P)" in r.flags):
+            fr.flags.append("isotype F/P unknown: subtracted in PE units (assumes equal F/P)")
         low = [r.well.well for r in rs if any(f.startswith("low events") for f in r.flags)]
         if low:
             fr.flags.append(f"low events in {len(low)} well(s)")
