@@ -1,0 +1,2 @@
+<!-- proposal by qfacs-build-thread at 2026-11-05 23:35:01Z; target: results.md; reason: gMFI method finding; link: https://github.com/masonberger4/qFACS/pull/5; status: open -->
+- 2026-11-05 (thread finding): FlowJo v10 gMFI = mean on the workspace's biex display transform, inverted (B5 (575)-A biex pos 6.45 width -1000 max 1e8). Matches FlowJo export median +0.2%; plain log gmean was -3.4%. Bead wsp 10.29.26.wsp has no gates; bead peaks auto-gated within 3%. Implemented in qfacs/fcs_io.py (PR #5).
