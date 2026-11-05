@@ -28,3 +28,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v22 | 2026-11-05 21:17:54Z | Review prior qFACS workbook work | proposals/review-prior-qfacs-workbook-work__results.md | proposal | phase 2 results and phase 3 feasibility | https://github.com/masonberger4/qFACS/pull/2 | fd712f3a1f -> f1ce6bd4e8 |
 | v23 | 2026-11-05 21:25:53Z | qfacs-build-thread | proposals/qfacs-build-thread__decisions.md | proposal | layout + F/P confirmation from Mase | https://github.com/masonberger4/qFACS/pull/3 | ABSENT -> c11a3e137f |
 | v24 | 2026-11-05 21:28:01Z | qfacs-build-thread | proposals/qfacs-build-thread__decisions.md | proposal | DLL3 F/P confirmed | https://github.com/masonberger4/qFACS/pull/3 | c11a3e137f -> c158dec94b |
+| v25 | 2026-11-05 21:34:45Z | dreamer | proposals/dreamer__status.md | proposal | dream 2026-11-05 S1 (updated: skills now installed) | cmsg_01Y3oxsYABfATcqbm4kp4uVBCNNDfbyv4VzB3eCz6arvfZ | e26796ad16 -> deadfc2658 |
