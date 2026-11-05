@@ -175,6 +175,13 @@ def validate(setup: Setup) -> list[Issue]:
     return issues
 
 
+def isotype_mismatch(ab: dict, iso: dict):
+    """True when host or isotype differ, False when they match, None when either is blank."""
+    if not (ab.get("host") and ab.get("isotype") and iso.get("host") and iso.get("isotype")):
+        return None
+    return _norm(ab["host"]) != _norm(iso["host"]) or _norm(ab["isotype"]) != _norm(iso["isotype"])
+
+
 def _isotype_match(ab: dict, iso: dict, issues):
     """Flag an antibody whose matched isotype differs in host species or isotype."""
     missing = [lbl for d, lbl in ((ab, ab["name"]), (iso, iso["name"])) if not d.get("host") or not d.get("isotype")]
@@ -182,7 +189,7 @@ def _isotype_match(ab: dict, iso: dict, issues):
         issues.append(Issue("warning", "Reagents", ab["_row"],
                             f"cannot check the isotype match for {ab['name']}: host or isotype blank for {', '.join(missing)}"))
         return
-    if _norm(ab["host"]) != _norm(iso["host"]) or _norm(ab["isotype"]) != _norm(iso["isotype"]):
+    if isotype_mismatch(ab, iso):
         issues.append(Issue("warning", "Reagents", ab["_row"],
                             f"isotype mismatch: {ab['name']} is {ab['host']} {ab['isotype']} but {iso['name']} is "
                             f"{iso['host']} {iso['isotype']}"))

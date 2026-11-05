@@ -6,11 +6,12 @@ calibrated with BD Quantibrite PE beads, to antigens (antibodies bound) per cell
 Project memory lives on the separate `memory` branch. The earlier Excel-only workbook is kept in `legacy/excel_v1/`.
 
 ## Status
-Phase 1 of the build plan: the experiment setup workbook and its validator. The analysis engine (phase 2) comes next.
+Phases 1 and 2 of the build plan: the experiment setup workbook and validator, and the analysis engine working from
+FlowJo table exports. Reading .fcs files with saved or automatic gates (phases 3 and 4) comes next.
 
 ## Install
 ```
-pip install -e ".[dev]"     # needs Python 3.10+; only dependency is openpyxl
+pip install -e ".[dev]"     # Python 3.10+; openpyxl, numpy, scipy, xlrd
 ```
 
 ## Setup workbook
@@ -42,6 +43,30 @@ Warnings are QC flags that travel with the results, including:
 - no PE-only control, or a reporter cell line without a reporter-only control (unmixing)
 
 `--wells` writes one line per well with cell line, reagent and final concentration.
+
+## Analyze FlowJo exports
+```
+python -m qfacs analyze my_setup.xlsx path/to/exports/ [-o results.xlsx]
+```
+Inputs are FlowJo table exports (.xls, .xlsx, .csv or .txt), one row per sample (named from the well, e.g. `E01-Sample_049`):
+- cell exports with `<gate path> | Geometric Mean (<PE parameter>)` and optionally `<gate path> | Count` for the live gate.
+  A file belongs to the plate whose Plate ID starts its name (`Plate1_A431.xls` -> Plate1).
+- a bead export (name contains "bead") with gates named Low, Med Low, Med High and High.
+
+The results workbook has Summary (cell line x antibody antigens/cell and flags), Plots, Fits, Wells, Beads and Issues.
+
+Method:
+1. Bead curve per bead run: log10(gMFI) = slope x log10(PE/bead) + intercept; QC = R² and 80-120 % recovery.
+2. PE/cell from gMFI; ABC = (PE/cell - same-row no-antibody PE/cell) / F:P.
+3. Isotype ABC of the matched isotype on the same cell line, interpolated on log concentration; specific ABC = ABC - isotype ABC.
+4. One-site fit per cell line x antibody (replicate plates pooled): specific ABC = Bmax x C / (Kd + C), 95 % CIs.
+   Antigens/cell = Bmax x valency (blank valency = 1).
+5. Flags (nothing is excluded): not saturated (top conc < k x Kd), poor fit, imprecise Bmax, ND, isotype mismatch or
+   missing, low live events, missing data, signal above the High bead (note), bead QC.
+
+`tests/test_analysis.py` checks that the Excel v1 Plate 1 example reproduces to 0.1 %.
+`examples/Exp2290_Set2_Plate1/` holds a full worked example (U-87 MG and A431). Its F/P and bead lot values are
+placeholders copied from the v1 workbook.
 
 ## Converting older setup sheets
 ```
