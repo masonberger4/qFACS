@@ -102,5 +102,24 @@ def test_cli_end_to_end(tmp_path):
     assert wb.sheetnames[:3] == ["Summary", "Plots", "Fits"]
     fits = {(r[0], r[1]): r for r in wb["Fits"].iter_rows(min_row=2, values_only=True)}
     assert fits[("A431", "DLL3")][10] == "ND"
-    assert fits[("U-87 MG", "CD58")][10] == pytest.approx(53500, rel=0.01)
+    assert fits[("U-87 MG", "CD58")][10] == pytest.approx(43164, rel=0.01)  # F/P 1.24, isotype F/P blank
     assert "low events in 2 well(s)" in fits[("A431", "CD58")][24]
+    assert "isotype F/P unknown" in fits[("A431", "CD58")][24]
+
+
+def test_blank_isotype_fp_subtracts_in_pe_units():
+    """Isotype F/P blank -> (PE_ab - PE_iso) / F/P_ab; equals the old result when both F/P were equal."""
+    s = v1_setup()
+    for r in s.reagents:
+        if r.get("is_isotype") == "Y":
+            iso_fp, r["fp_ratio"] = r["fp_ratio"], None
+    ref = {(f.cell_line, f.reagent): f for f in v1_results().fits}
+    res = analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
+    got = {(f.cell_line, f.reagent): f for f in res.fits}
+    f = got[("H1975", "CD58")]
+    assert "isotype F/P unknown: subtracted in PE units (assumes equal F/P)" in f.flags
+    fp = s.reagent("CD58")["fp_ratio"]
+    if fp == iso_fp:
+        assert f.antigens == pytest.approx(ref[("H1975", "CD58")].antigens, rel=1e-9)
+    w = next(w for w in res.wells if w.well.reagent == "CD58" and w.iso_abc is not None)
+    assert w.specific == pytest.approx((w.net_pe - w.iso_abc * fp) / fp)

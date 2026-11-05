@@ -152,7 +152,9 @@ def test_exp2281_example():
     wells, _ = expand_wells(s)
     assert len(s.plates) == 5 and len(wells) == 480
     errs = messages(issues, "error")
-    # bead lot values and two F/P ratios are not in the source workbook: the user must enter them
+    # bead lot values and the DLL3 F/P are not in the source workbook: the user must enter them.
+    # The isotype F/P ("-") may stay blank: warning, isotype subtracted in PE units.
     assert sum("PE/bead" in e for e in errs) == 4
-    assert sum("F/P" in e for e in errs) == 2
+    assert sum("F/P is required" in e for e in errs) == 1
+    assert any("isotype F/P blank" in w for w in messages(issues, "warning"))
     assert any("DLL3 is Rabbit" in w for w in messages(issues, "warning"))
