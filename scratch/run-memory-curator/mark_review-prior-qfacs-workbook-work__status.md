@@ -1,0 +1,2 @@
+<!-- proposal by Review prior qFACS workbook work at 2026-11-04 23:44:48Z; target: status.md; reason: build plan drafted; link: https://claude.ai/artifact/MKhhyuQpTo8xxKecP1LEhv; status: merged v29 (folded into S1) -->
+- 2026-11-04: Build plan doc (Claude Doc) https://claude.ai/artifact/MKhhyuQpTo8xxKecP1LEhv : Excel setup template + Python engine; phases 1 setup template, 2 engine from FlowJo export (regression = Excel v1 Plate 1 numbers), 3 .fcs + .wsp gates, 4 auto gating + unmixing, 5 hand-off. Awaiting Mase review.
