@@ -1,4 +1,4 @@
-<!-- proposal by dreamer at 2026-11-05 06:09:41Z; target: threads.md; reason: dream 2026-11-05 T1: registry missing a thread, states stale; link: list_threads 2026-11-05; status: open -->
+<!-- proposal by dreamer at 2026-11-05 06:09:41Z; target: threads.md; reason: dream 2026-11-05 T1: registry missing a thread, states stale; link: list_threads 2026-11-05; status: merged v30 -->
 Edits:
 - "Set up project memory system": state active -> done (2026-11-04 22:14).
 - "Run memory curator": state "requested from coordinator" -> idle, awaiting approvals.
