@@ -1,3 +1,2 @@
-<!-- proposal by qfacs-build-thread at 2026-11-05 21:25:53Z; target: decisions.md; reason: layout + F/P confirmation from Mase; link: https://github.com/masonberger4/qFACS/pull/3; status: open -->
-- 2026-11-05 (Mase): Exp2290 Set2 Plate1 layout confirmed: U-87 MG rows A-D, A431 rows E-H; CD58, B7H3, DLL3, mIgG1; top 50 ug/mL, 1.8x dilution. F/P: CD58 1.24, B7H3 1.2 (Exp2281 Design sheet). DLL3 F/P blank on that sheet (v1 used 1.357 from vial label, unconfirmed). Isotype mIgG1 F/P '-' (unknown).
-- 2026-11-05 (thread decision, pending Mase OK): a blank isotype F/P is allowed; isotype subtracted in PE units, (PE_ab - PE_iso)/FP_ab, flagged per fit. F/P stays required for antibodies. qFACS PR #3.
+<!-- proposal by qfacs-build-thread at 2026-11-05 21:28:01Z; target: decisions.md; reason: DLL3 F/P confirmed; link: https://github.com/masonberger4/qFACS/pull/3; status: open -->
+- 2026-11-05 (Mase): DLL3 (Novus NBP3-45128PE, lot D224308) F/P 1.357 from vial label confirmed for Exp2290.
