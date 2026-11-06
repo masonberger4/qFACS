@@ -36,6 +36,9 @@ class Sheet:
     help: str = ""
 
 
+# Suggested values pre-filled in a new setup workbook (the analysis uses the same values when a cell is blank).
+SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5}
+
 EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("experiment_id", "Experiment ID", required=True),
     Field("date", "Date (yyyy-mm-dd)"),
@@ -47,9 +50,15 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
           help="Name of the final gate, e.g. Live. Used to find gMFI and counts in exports."),
     Field("fixed_after_staining", "Cells fixed after staining? (Y/N)", "yn",
           help="Recorded so fixed and unfixed runs can be compared."),
-    Field("min_live_events", "Min live events per well (QC)", "int"),
-    Field("bead_r2_min", "Bead curve R² minimum (QC)", "number"),
-    Field("saturation_k", "Saturated when top conc ≥ k × Kd (k)", "number"),
+    Field("min_live_events", "Min live events per well (QC)", "int",
+          help="Suggested 1000 (pre-filled; blank = 1000). Wells with fewer live events are flagged (still used). "
+               "Lower it for scarce cells, raise it for more precise gMFI."),
+    Field("bead_r2_min", "Bead curve R² minimum (QC)", "number",
+          help="Suggested 0.98 (pre-filled; blank = 0.98). R² of the log-log line through the 4 bead peaks (shown on the Beads sheet "
+               "of the results); good runs are > 0.99. Below this, results on that plate are flagged 'check beads'."),
+    Field("saturation_k", "Saturated when top conc ≥ k × Kd (k)", "number",
+          help="Suggested 5 (pre-filled; blank = 5); use 10 for a stricter check. Kd comes from the fit. At 5×Kd ~83% of antigen is bound, at 10×Kd ~91%. "
+               "If the top conc is below k×Kd, Bmax is extrapolated and flagged 'not saturated'. Lower k if stock conc limits you."),
     Field("notes", "Notes", width=60),
 ), help="One value per line. Yellow cells are inputs.")
 

@@ -6,12 +6,14 @@ calibrated with BD Quantibrite PE beads, to antigens (antibodies bound) per cell
 Project memory lives on the separate `memory` branch. The earlier Excel-only workbook is kept in `legacy/excel_v1/`.
 
 ## Status
-Phases 1 and 2 of the build plan: the experiment setup workbook and validator, and the analysis engine working from
-FlowJo table exports. Reading .fcs files with saved or automatic gates (phases 3 and 4) comes next.
+Phases 1-3 of the build plan: the experiment setup workbook and validator, the analysis engine working from
+FlowJo table exports, and reading .fcs files gated by a FlowJo workspace (.wsp), with automatic Quantibrite bead
+peak gating. Automatic cell gating without a workspace and spectral unmixing (phase 4) come next.
 
 ## Install
 ```
 pip install -e ".[dev]"     # Python 3.10+; openpyxl, numpy, scipy, xlrd
+pip install -e ".[fcs]"     # optional: FlowKit, to read .fcs + .wsp directly
 ```
 
 ## Setup workbook
@@ -80,3 +82,18 @@ from the source stay blank so the validator asks for them.
 ```
 python -m pytest
 ```
+
+## From .fcs + .wsp
+Put the setup workbook, the FlowJo workspace (.wsp, gated e.g. Cells > Single Cells > Live), the plate's .fcs
+files (any subfolder) and the bead tube .fcs in one folder, then
+```
+python -m qfacs analyze FOLDER/my_setup.xlsx FOLDER
+```
+- Cells: the workspace's gates are applied with FlowKit. Live count and PE geometric mean per sample are written to
+  `FOLDER/qfacs_gated/<Plate ID>_<workspace>_gated.xlsx` in FlowJo export layout. The plate comes from the .fcs
+  `plateid` keyword (Plate_001 = Plate1), or the only plate in the setup.
+- Geometric mean is computed the FlowJo v10 way: averaged on the parameter's biexponential display transform from
+  the workspace, then transformed back. On Exp2290 Plate 1 this matches FlowJo's export to a median +0.2%
+  (90% of wells within 0.5%); counts match to a median of <0.5%. Final antigens/cell agree within 0.3%.
+- Beads: the bead .fcs (named on the Beads sheet, containing "bead", or the only .fcs left over) is gated
+  automatically: the four peaks on log PE, valley to valley. On Exp2290 this is within 3% of the manual FlowJo gates.
