@@ -1,4 +1,4 @@
-<!-- proposal by dreamer at 2026-11-05 06:09:42Z; target: lessons.md; reason: dream 2026-11-05 L1: three lessons from first day; link: cmsg_01Y3oxsYABfATcqbm4kp4uVBVp31EWLhjZmHj1EruwJqsz; cmsg_01Y3oxsYABfATcqbm4kp4uVB3JjV4B5TDCGE3uWcmXrfwf; prior review thread; status: merged v31 -->
-- 2026-11-04: Skill names collide across Mase's projects (Stock trading already has dream/memory-hygiene/checking-in). Prefix this project's skills with `qfacs-`.
-- 2026-11-04: Don't test-push a protected branch to verify a ruleset (a missing rule would land the push for real). Tools can't read rule contents; ask Mase to confirm visually.
-- 2026-11-04: BD A8 User's Guide PDFs are scanned (no text layer); grep/pdftotext return nothing. Read pages as images; export chapter p.317-327, plate loader p.300.
+<!-- proposal by dreamer at 2026-11-06 06:06:19Z; target: lessons.md; reason: dream 2026-11-06 L1-L2; link: cmsg_01Y3oxsYABfATcqbm4kp4uVBYBrSGgMT86dfZANPwNVPnL; cmsg_01Y3oxsYABfATcqbm4kp4uVB3K3YvQcdpsxojTs6h3xz93; CHANGELOG v23,v42; status: open -->
+[L1 MED] ADD: "2026-11-05: Mase answers numbered questions tersely ("1 correct", "#2 that works") while several numbered lists are open in the same thread; '#2' was read correctly only by timing, and Q1 of the later list (isotype in PE units) was left unanswered. Use distinct labels per ask (e.g. L1/L2 or F1/F2), keep one open list at a time, and re-ask any unanswered item explicitly."
+[L2 LOW] ADD: "2026-11-05: one thread filed proposals under two --agent names ('Review prior qFACS workbook work', 'qfacs-build-thread'). Use the thread's title as --agent so proposals and CHANGELOG trace to one thread."
+Uplift: avoids recording an owner answer against the wrong question; keeps provenance clean.
