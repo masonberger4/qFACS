@@ -54,3 +54,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v48 | 2026-11-06 06:06:18Z | dreamer | proposals/dreamer__threads.md | proposal | dream 2026-11-06 T1: build thread state and scope changed | list_threads 2026-11-06 | 27c6cc69f4 -> 0ee5b36ae1 |
 | v49 | 2026-11-06 06:06:19Z | dreamer | proposals/dreamer__lessons.md | proposal | dream 2026-11-06 L1-L2 | cmsg_01Y3oxsYABfATcqbm4kp4uVBYBrSGgMT86dfZANPwNVPnL; cmsg_01Y3oxsYABfATcqbm4kp4uVB3K3YvQcdpsxojTs6h3xz93; CHANGELOG v23,v42 | 85a126c775 -> ef61143e3a |
 | v50 | 2026-11-06 06:06:43Z | dreamer | proposals/dreamer__dream_2026-11-06.md | proposal | daily dream report 2026-11-06 | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBNB3va9jdUjAAZJoNmn6nHv | ABSENT -> 6792921414 |
+| v51 | 2026-11-07 06:04:37Z | dreamer | proposals/dreamer__dream_2026-11-07.md | proposal | daily dream report 2026-11-07 (quiet day) | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBPgvKtpcNb2BqTfihhMvG4G | ABSENT -> 5e1ae3d1ab |
