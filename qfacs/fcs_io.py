@@ -184,6 +184,7 @@ def gate_folder(folder, setup, out_dir=None):
     notes, cells, beads = [], [], []
     plates = {norm_plate(p["plate_id"]): p["plate_id"] for p in setup.plates if p.get("plate_id")}
     fcs = sorted(p for p in folder.rglob("*.fcs"))
+    bead_names = {Path(str(b.get("data_file"))).stem.lower() for b in setup.beads if b.get("data_file")}
     used = set()
     for wsp in sorted(folder.rglob("*.wsp")):
         dirs = sorted({p.parent for p in fcs})
@@ -200,8 +201,8 @@ def gate_folder(folder, setup, out_dir=None):
                     continue
                 cells.append(write_table(t, out_dir / f"{pid}_{wsp.stem}_gated.xlsx"))
                 notes.append(f"{wsp.name}: gated {len(t.rows)} samples from {d.name} for {pid}")
-            used |= {p for p in d.glob("*.fcs")}
-    bead_names = {Path(str(b.get("data_file"))).stem.lower() for b in setup.beads if b.get("data_file")}
+            # a bead .fcs named on the Beads sheet may sit next to the plate's .fcs files
+            used |= {p for p in d.glob("*.fcs") if p.stem.lower() not in bead_names}
     rest = [p for p in fcs if p not in used]
     for p in rest:
         if p.stem.lower() in bead_names or "bead" in p.name.lower() or (len(setup.beads) == 1 and len(rest) == 1):
