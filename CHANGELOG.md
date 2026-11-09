@@ -66,3 +66,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v60 | 2026-11-09 23:19:05Z | Run memory curator | proposals/qfacs-build-thread__decisions.md | edit | mark proposal merged v55 (via D1) | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | c158dec94b -> 3544a65375 |
 | v61 | 2026-11-09 23:19:05Z | Run memory curator | proposals/dreamer__results.md | edit | mark proposal merged v56 | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | 14669e3854 -> 9860d70db9 |
 | v62 | 2026-11-09 23:19:07Z | Run memory curator | proposals/qfacs-build-thread__results.md | edit | mark proposal merged v56 (via R1) | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | 54df8ff590 -> e59f956098 |
+| v63 | 2026-11-09 23:49:51Z | Finish qFACS setup template from run | proposals/finish-qfacs-setup-template-from-run__results.md | proposal | CHO-EGFR run + optional F/P | PR #7 | ABSENT -> b2acb9aa34 |
