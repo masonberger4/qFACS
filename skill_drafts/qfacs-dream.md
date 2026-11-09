@@ -17,6 +17,7 @@ Agent name "dreamer". Never call update_memory; never edit top-level files (ACL)
 6. Write the report via `memsave.py propose dream_<YYYY-MM-DD>.md`: ranked table, evidence, what was NOT reviewed, "approve with: apply D1,L2".
 7. Update cursor.json (scratch) only after the report is saved.
 8. Post the top 5 to the owner with the approval ask, under 120 words.
+   Quiet-day rule (2026-11-09, O3): if this is the 3rd or later run in a row with no new activity and no owner reply since the last post, save the report but do not post; resume posting when there is new activity or the owner replies.
 
 ## Apply step (a writer, after owner says "apply X")
 H=$(memsave.py hash FILE); edit; `memsave.py save FILE --base $H --agent <writer> --reason "merged dream proposal X, approved by <owner> <msg id>" --link <proposal>`; mark proposal "merged vN"; index changes go through the coordinator only. Next dream records "previously merged, still recurring?".
