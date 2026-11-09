@@ -1,12 +1,13 @@
 {
- "last_dream_utc": "2026-11-07T06:08:00Z",
+ "last_dream_utc": "2026-11-08T06:08:00Z",
  "seen": {
   "cmsg_01Y3oxsYABfATcqbm4kp4uVBD81t8tj9Xiz6yknWJp7GUQ": "cmsg_01Y3oxsYABfATcqbm4kp4uVB3JjV4B5TDCGE3uWcmXrfwf",
   "cmsg_01Y3oxsYABfATcqbm4kp4uVB8xZ6GfP5noVc8aYPiPisaF": "cmsg_01Y3oxsYABfATcqbm4kp4uVBPyznTHRzwVdeisCpoEACoC",
   "cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f": "cmsg_01Y3oxsYABfATcqbm4kp4uVBEAdSC2WE73gAf6Nck3bB2v",
   "cmsg_01Y3oxsYABfATcqbm4kp4uVBGFBWLDVsP3Lv4Cifvhe6GT": "resolved 2026-11-05T21:35:40Z",
-  "project_chat": "cmsg_01Y3oxsYABfATcqbm4kp4uVBLkQM2PuytpugmeovttVbk6",
-  "cmsg_01Y3oxsYABfATcqbm4kp4uVBNB3va9jdUjAAZJoNmn6nHv": "cmsg_01Y3oxsYABfATcqbm4kp4uVBN1tF7H3jyL6kuY2XWQzDee"
+  "project_chat": "cmsg_01Y3oxsYABfATcqbm4kp4uVB719dNnWznhkUHuQP99TcqQ",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBNB3va9jdUjAAZJoNmn6nHv": "cmsg_01Y3oxsYABfATcqbm4kp4uVBN1tF7H3jyL6kuY2XWQzDee",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBPgvKtpcNb2BqTfihhMvG4G": "cmsg_01Y3oxsYABfATcqbm4kp4uVBVv2cLSZvKNof9jNo4e4dsQ"
  },
  "proposed": [
   "S1",
@@ -21,5 +22,5 @@
   "O1",
   "O2"
  ],
- "report": "proposals/dreamer__dream_2026-11-07.md"
+ "report": "proposals/dreamer__dream_2026-11-08.md"
 }
