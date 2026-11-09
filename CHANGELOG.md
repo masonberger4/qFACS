@@ -64,3 +64,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v58 | 2026-11-09 23:19:01Z | Run memory curator | proposals/dreamer__status.md | edit | mark proposal merged v54 | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | 0e3abc5854 -> ee360497e6 |
 | v59 | 2026-11-09 23:19:04Z | Run memory curator | proposals/dreamer__decisions.md | edit | mark proposal merged v55 (D1+D2) | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | 26bf8183df -> 0055534835 |
 | v60 | 2026-11-09 23:19:05Z | Run memory curator | proposals/qfacs-build-thread__decisions.md | edit | mark proposal merged v55 (via D1) | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | c158dec94b -> 3544a65375 |
+| v61 | 2026-11-09 23:19:05Z | Run memory curator | proposals/dreamer__results.md | edit | mark proposal merged v56 | Mase approval cmsg_01Y3oxsYABfATcqbm4kp4uVBUhyZGdaWmCFP8BRUvEGytX | 14669e3854 -> 9860d70db9 |
