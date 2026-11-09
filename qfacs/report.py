@@ -126,7 +126,8 @@ def _fits(ws, res: Results):
         g = f.reagent_rec
         fit = f.fit
         nd = f.status == "ND"
-        vals = [f.cell_line, f.reagent, g.get("target"), g.get("clone"), g.get("catalog"), g.get("lot"), g.get("fp_ratio"),
+        vals = [f.cell_line, f.reagent, g.get("target"), g.get("clone"), g.get("catalog"), g.get("lot"),
+                g.get("fp_ratio") or ("1 (assumed)" if g.get("is_isotype") != "Y" else None),
                 g.get("valency") or 1, ", ".join(f.plates), len(f.points),
                 "ND" if nd else sig3(f.antigens), None if nd else fit.bmax,
                 None if nd or not fit.bmax_ci else fit.bmax_ci[0], None if nd or not fit.bmax_ci else fit.bmax_ci[1],

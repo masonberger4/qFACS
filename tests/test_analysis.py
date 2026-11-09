@@ -123,3 +123,22 @@ def test_blank_isotype_fp_subtracts_in_pe_units():
         assert f.antigens == pytest.approx(ref[("H1975", "CD58")].antigens, rel=1e-9)
     w = next(w for w in res.wells if w.well.reagent == "CD58" and w.iso_abc is not None)
     assert w.specific == pytest.approx((w.net_pe - w.iso_abc * fp) / fp)
+
+
+def test_blank_antibody_fp_defaults_to_1_and_is_flagged():
+    """Antibody F/P blank -> ABC = PE per cell / 1 (a 1:1 conjugate), flagged on wells, fits and in validate."""
+    s = v1_setup()
+    fp = s.reagent("CD58")["fp_ratio"]
+    s.reagent("CD58")["fp_ratio"] = None
+    ref = {(f.cell_line, f.reagent): f for f in v1_results().fits}
+    res = analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
+    got = {(f.cell_line, f.reagent): f for f in res.fits}
+    f = got[("H1975", "CD58")]
+    assert "F/P assumed 1 (blank in setup)" in f.flags
+    assert all("F/P assumed 1 (blank in setup)" in w.flags for w in res.wells if w.well.reagent == "CD58" and w.abc is not None)
+    assert "F/P assumed 1 (blank in setup)" not in got[("H1975", "B7H3")].flags
+    w = next(w for w in res.wells if w.well.reagent == "CD58" and w.abc is not None)
+    assert w.abc == pytest.approx(w.net_pe)
+    if fp == 1:
+        assert f.antigens == pytest.approx(ref[("H1975", "CD58")].antigens, rel=1e-9)
+    assert [i for i in res.issues if i.level == "error"] == []

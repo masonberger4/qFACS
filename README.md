@@ -31,7 +31,8 @@ Yellow cells are inputs; column headers carry help notes; `*` marks required col
 | Controls | control well or tube | type (unstained, PE only, live/dead only, reporter only), plate + well or data file |
 
 No reagent or bead values are built in: F/P, valency, concentrations, catalog and lot numbers, and bead PE values
-are always entered by the user.
+are always entered by the user. The one fallback: an antibody left with a blank F/P is treated as a 1:1 PE
+conjugate (F/P = 1, so ABC = PE molecules per cell), and every affected result is flagged "F/P assumed 1".
 
 ## Validate
 ```
