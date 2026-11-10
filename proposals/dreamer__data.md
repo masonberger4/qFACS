@@ -1,11 +1,11 @@
-<!-- proposal by dreamer at 2026-11-06 06:06:17Z; target: data.md; reason: dream 2026-11-06 A1: stale repo line; new shared-folder dirs (updates 2026-11-05 A1); link: cmsg_01Y3oxsYABfATcqbm4kp4uVBMES3SuWi4BZyTSobutNw1h; cmsg_01Y3oxsYABfATcqbm4kp4uVBTfGPYtsWACQJ5QUNRoVu9H; status: open -->
-[A1 MED] Replaces the open 2026-11-05 A1 (A8 part already merged).
-- Repo line -> "Repo: https://github.com/masonberger4/qFACS. Branches: `main` (code: qfacs/ package, tests/, examples/, legacy/excel_v1; PRs #1-#3, #5 merged 2026-11-05), `memory` (approved memory store)."
-- ADD "## Working folders (2026-11-05)":
-  - setup/: qFACS_setup_template.xlsx (phase 1 version), Exp2281_setup.xlsx (converted example).
-  - results/: Exp2290_Set2_qFACS_results.xlsx + setup (phase 2 run).
-  - test_run/: qFACS_test_run.zip + unzipped qFACS_test_run/ (HOW_TO_RUN.md, 1_install.bat, 2_run_example.bat, 3_analyze_my_folder.bat); to_edit/ (current template with pre-filled QC suggestions + Exp2290_Set2_setup_prefilled.xlsx, the files Mase edits); cloud_run/ (results from cloud run).
-  - Exp2290 inputs: Plate_001.zip (.fcs), 02-Nov-2026.wsp (gates Cells > Single Cells > Live), bead tube Tube_001 / bead wsp 10.29.26.wsp (no gates).
-  - prior_work/REVIEW_excel_v1.md: review of Excel v1 incl. 6 inconsistencies.
-- FLAG: two qFACS_setup_template.xlsx copies (setup/ older, test_run/to_edit/ newer with QC notes). Point threads at to_edit/ or regenerate setup/ (O-item for build thread).
-Uplift: data.md still says the repo is empty; folders created yesterday are undocumented, and the template duplicate can hand Mase the stale copy.
+<!-- proposal by dreamer at 2026-11-10 06:08:28Z; target: data.md; reason: dream 2026-11-10 data; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: open -->
+[A1 MED] Replaces open A1 (2026-11-06).
+- Repo line -> "Repo: https://github.com/masonberger4/qFACS. `main` = code (qfacs/ package, tests, examples, legacy/excel_v1; PRs #1-#3, #5, #7-#10 merged by 2026-11-10). `memory` = approved memory store (PRs #4, #6)."
+- ADD "## Working folders (2026-11-10)":
+  - setup/: qFACS_setup_template.xlsx, Exp2281_setup.xlsx, CHO-EGFR_setup.xlsx.
+  - results/: Exp2290_Set2_* (phase 2), CHO-EGFR/, fcs_only_test_2026-11-10/, autogate_check_2026-11-10/, autogate_check_plate3_2026-11-10/, autogate_check_plate4_2026-11-10/.
+  - test_run/: qFACS_test_run.zip (HOW_TO_RUN.md, Windows .bat untested), to_edit/, cloud_run/.
+  - Raw data (Exp2290 Set 2, acquired 02-Nov-2026): Plate_001.zip + 02-Nov-2026.wsp (U-87 MG/A431); Plate_002.zip + "02-Nov-2026 2.wsp" (MCF7 A-D, FaDu E-H); Plate_003.zip + "02-Nov-2026 3.wsp" (H82 A-D, SHP77 E-H); Plate_004.zip + "02-Nov-2026 4.wsp" (Kasumi 2 A-D, CORL279 E-H). Only Plate 1 has a bead tube (Tube_001). "Plate_001 2.zip" appears to be a duplicate upload (same size).
+  - CHO EGFR.zip: CHO-EGFR plate + beads.
+- FLAG (carried): duplicate qFACS_setup_template.xlsx (setup/ vs test_run/to_edit/); not re-checked whether PR #7 resolved it.
+Uplift: threads re-discover which .wsp/zip belongs to which plate and that beads are only in Plate 1.
