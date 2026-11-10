@@ -1,6 +1,27 @@
-{"last_dream_utc": "2026-11-05T06:15:00Z",
- "seen": {"cmsg_01Y3oxsYABfATcqbm4kp4uVBD81t8tj9Xiz6yknWJp7GUQ": "cmsg_01Y3oxsYABfATcqbm4kp4uVB3JjV4B5TDCGE3uWcmXrfwf",
-          "cmsg_01Y3oxsYABfATcqbm4kp4uVB8xZ6GfP5noVc8aYPiPisaF": "cmsg_01Y3oxsYABfATcqbm4kp4uVBBQH75J46HZn9yW6qNWgrqv",
-          "cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f": "cmsg_01Y3oxsYABfATcqbm4kp4uVBLTDYZzp3xLQGJ5CVTP6bwr",
-          "project_chat": "cmsg_01Y3oxsYABfATcqbm4kp4uVBNfpKQrvYBVR7g6aRPSnuaL"},
- "proposed": ["D1","D2","S1","T1","L1","A1","O1"]}
+{
+ "last_dream_utc": "2026-11-09T06:12:00Z",
+ "seen": {
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBD81t8tj9Xiz6yknWJp7GUQ": "cmsg_01Y3oxsYABfATcqbm4kp4uVB3JjV4B5TDCGE3uWcmXrfwf",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVB8xZ6GfP5noVc8aYPiPisaF": "cmsg_01Y3oxsYABfATcqbm4kp4uVBPyznTHRzwVdeisCpoEACoC",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBJmHYQJezAabrQ4aNv6qb5f": "cmsg_01Y3oxsYABfATcqbm4kp4uVBEAdSC2WE73gAf6Nck3bB2v",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBGFBWLDVsP3Lv4Cifvhe6GT": "resolved 2026-11-05T21:35:40Z",
+  "project_chat": "cmsg_01Y3oxsYABfATcqbm4kp4uVBEi81YJ4FMrXs5N8EeUh8CK",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBNB3va9jdUjAAZJoNmn6nHv": "cmsg_01Y3oxsYABfATcqbm4kp4uVBN1tF7H3jyL6kuY2XWQzDee",
+  "cmsg_01Y3oxsYABfATcqbm4kp4uVBPgvKtpcNb2BqTfihhMvG4G": "cmsg_01Y3oxsYABfATcqbm4kp4uVBVv2cLSZvKNof9jNo4e4dsQ"
+ },
+ "proposed": [
+  "A1",
+  "D1",
+  "D2",
+  "I1",
+  "L1",
+  "L2",
+  "O1",
+  "O2",
+  "O3",
+  "R1",
+  "S1",
+  "T1"
+ ],
+ "report": "proposals/dreamer__dream_2026-11-09.md"
+}

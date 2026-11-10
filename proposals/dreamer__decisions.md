@@ -1,8 +1,15 @@
-<!-- proposal by dreamer at 2026-11-05 06:09:38Z; target: decisions.md; reason: dream 2026-11-05 D2: record Claude-recommended analysis defaults as pending owner confirmation; link: cmsg_01Y3oxsYABfATcqbm4kp4uVBXkS8uJRi9P43NcnSqQJZAs; status: merged v26 -->
-## Proposed analysis defaults, AWAITING Mase confirmation (2026-11-04, Claude in "Review prior qFACS workbook work", msg cmsg_01Y3oxsYABfATcqbm4kp4uVBXkS8uJRi9P43NcnSqQJZAs)
-Not owner decisions yet; ask Mase to confirm via the build plan doc before treating as rules.
-- Report: Bmax from titration fit as main number, plus top-dose ABC; flag "not saturated" when top conc < ~5x fitted Kd.
-- Valency: per-antibody input, default 1 (antigens = ABC).
-- Background: (1) subtract no-antibody well gMFI (autofluorescence); (2) convert each reagent to ABC with its own F/P; (3) subtract isotype ABC at matched concentration. Isotype must match host/isotype (note: DLL3 rabbit chimera vs mIgG1 isotype is a mismatch).
-- gMFI above High bead: note only, not a warning (Mase agreed, msg cmsg_01Y3oxsYABfATcqbm4kp4uVB6cVH9VPUt24hvTMMzC2JN2).
-- Fixation: suggested fixed vs unfixed head-to-head on one line; Mase has not committed to running it.
+<!-- proposal by dreamer at 2026-11-06 06:05:47Z; target: decisions.md; reason: dream 2026-11-06 D1+D2 (fix msg id); link: cmsg_01Y3oxsYABfATcqbm4kp4uVBYBrSGgMT86dfZANPwNVPnL; cmsg_01Y3oxsYABfATcqbm4kp4uVB3K3YvQcdpsxojTs6h3xz93; cmsg_01Y3oxsYABfATcqbm4kp4uVBCkEZeAZDooPGEubdXQxD3e; status: merged v55 (D1+D2) -->
+[D1 HIGH] Append to Log (supersedes open proposal qfacs-build-thread__decisions.md, mark it merged with this):
+- 2026-11-05, Mase: Exp2290 Set 2 Plate 1 layout confirmed: U-87 MG rows A-D, A431 rows E-H, each row CD58, B7H3, DLL3, mIgG1; 50 ug/mL top, 1.8x (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBYBrSGgMT86dfZANPwNVPnL "1 correct").
+- 2026-11-05, Mase: Exp2290 F/P: CD58 1.24, B7H3 1.2 (from setup sheet); DLL3 (Novus NBP3-45128PE, lot D224308) 1.357 from vial label confirmed (msg cmsg_01Y3oxsYABfATcqbm4kp4uVB3K3YvQcdpsxojTs6h3xz93 "#2 that works"). Experiment-specific inputs, not defaults.
+- 2026-11-05, Mase: every user-entered setting in the setup workbook gets a note telling the user how to obtain it and/or a suggested value (msgs cmsg_01Y3oxsYABfATcqbm4kp4uVBCkEZeAZDooPGEubdXQxD3e, cmsg_01Y3oxsYABfATcqbm4kp4uVBRax1nhtLCdXxrenZSXNnLu "and/or provide a suggestion").
+- 2026-11-05, Mase: wants cloud runs: Mase uploads setup + data to the thread, Claude runs and returns results (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBVYHb9u3iq6WqVrkphLpH2c).
+- Digest line (add): "Setup inputs always user-entered, each with a how-to note and suggested value (2026-11-05)."
+
+[D2 HIGH] Append to "Proposed analysis defaults, AWAITING Mase" (Claude recommendations, NOT decided):
+- Isotype with blank F/P: subtract in PE units assuming antibody F/P, flagged. Asked of Mase (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBXL6Z4fy1Zwcv9mGRRNFN6d Q1) but never answered; "#2 that works" answered Q2 only.
+- Order: convert each gMFI to PE/ABC first, then subtract (curve slope != 1). BD insert is silent on isotype/background (msg cmsg_01Y3oxsYABfATcqbm4kp4uVB5pUKGBHTVgDVGomW8Y92g1).
+- QC suggestions pre-filled in template: min live events 1000, bead R^2 min 0.98, saturated when top conc >= k x Kd with k = 5 (Claude conventions, not BD).
+- Auto gating plan (phase 4): gate library with one reference Cells gate per cell line fit to new plates, fixed Singlets (FSC-A vs FSC-H) and Live (V6 low) rules, gate-plot QC sheet.
+Evidence: build thread 2026-11-05 21:22Z-23:36Z.
+Uplift: prevents re-asking confirmed layout/F/P, and stops PE-unit isotype subtraction and QC thresholds being treated as owner decisions.
