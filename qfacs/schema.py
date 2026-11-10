@@ -37,7 +37,10 @@ class Sheet:
 
 
 # Suggested values pre-filled in a new setup workbook (the analysis uses the same values when a cell is blank).
-SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5}
+SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5,
+             # automatic gating channels (BD FACSDiscover A8 raw detectors)
+             "gate_fsc": "FSC-A", "gate_ssc": "SSC (Violet)-A", "gate_width": "SSC (Violet)-W",
+             "gate_viability": "V6 (515)-A"}
 
 EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("experiment_id", "Experiment ID", required=True),
@@ -59,6 +62,18 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("saturation_k", "Saturated when top conc ≥ k × Kd (k)", "number",
           help="Suggested 5 (pre-filled; blank = 5); use 10 for a stricter check. Kd comes from the fit. At 5×Kd ~83% of antigen is bound, at 10×Kd ~91%. "
                "If the top conc is below k×Kd, Bmax is extrapolated and flagged 'not saturated'. Lower k if stock conc limits you."),
+    Field("gate_fsc", "Auto gating: forward scatter (area)",
+          help="Suggested FSC-A (pre-filled; blank = FSC-A). Only used when a plate has .fcs files but no FlowJo .wsp: "
+               "the program then draws Cells > Single Cells > Live itself, one set of gates per plate and cell line. "
+               "Use the parameter name exactly as in the .fcs file."),
+    Field("gate_ssc", "Auto gating: side scatter (area)",
+          help="Suggested SSC (Violet)-A (pre-filled; blank = SSC (Violet)-A). Y axis of the Cells gate."),
+    Field("gate_width", "Auto gating: singlet width parameter",
+          help="Suggested SSC (Violet)-W (pre-filled; blank = SSC (Violet)-W). Doublets are removed on side scatter area vs width, "
+               "as in the hand-drawn Single Cells gate."),
+    Field("gate_viability", "Auto gating: viability dye parameter (none = no Live gate)",
+          help="Suggested V6 (515)-A (pre-filled; blank = V6 (515)-A), the live/dead dye detector. Live = the dim main peak. "
+               "Type none if no viability dye was used."),
     Field("notes", "Notes", width=60),
 ), help="One value per line. Yellow cells are inputs.")
 

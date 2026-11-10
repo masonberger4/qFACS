@@ -98,3 +98,19 @@ python -m qfacs analyze FOLDER/my_setup.xlsx FOLDER
   (90% of wells within 0.5%); counts match to a median of <0.5%. Final antigens/cell agree within 0.3%.
 - Beads: the bead .fcs (named on the Beads sheet, containing "bead", or the only .fcs left over) is gated
   automatically: the four peaks on log PE, valley to valley. On Exp2290 this is within 3% of the manual FlowJo gates.
+
+## From .fcs only (no FlowJo workspace)
+Put the setup workbook, the plate's .fcs files and the bead tube .fcs in one folder and run the same command.
+Any .fcs not covered by a .wsp is gated automatically (`qfacs/autogate.py`), the way a FlowJo group gate works:
+one set of Cells > Single Cells > Live gates is learned per plate and cell line from all of that line's wells
+pooled, then applied to every well.
+- Cells: main FSC-A / SSC-A population (density hull), debris below 20% of the FSC-A mode removed.
+- Single Cells: SSC-A vs SSC-W, width within median +/- 4 MAD.
+- Live: viability dye (V6 (515)-A) below mode + 2.5 x the live peak's dim-side width. Type `none` on the
+  Experiment sheet when no dye was used.
+- Channels are set on the Experiment sheet (A8 defaults pre-filled). The learned gates are listed in the
+  results' notes.
+- Check against hand gates (CHO-EGFR, 24 titration wells, same display transform): PE gMFI median 1.7% off
+  (90% within 3.7%), final EGFR antigens/cell within 2% of the .wsp route.
+- With no workspace, PE gMFI uses the default biex display transform (positive 6.45, width -1000). FlowJo's gMFI
+  depends on the transform set in each workspace, so expect a few % difference from a FlowJo export.
