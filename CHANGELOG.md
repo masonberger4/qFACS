@@ -70,3 +70,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v64 | 2026-11-10 06:08:23Z | dreamer | proposals/dreamer__status.md | proposal | dream 2026-11-10 status | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | ee360497e6 -> 08be568d6d |
 | v65 | 2026-11-10 06:08:27Z | dreamer | proposals/dreamer__results.md | proposal | dream 2026-11-10 results | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 9860d70db9 -> 0a4112a48a |
 | v66 | 2026-11-10 06:08:28Z | dreamer | proposals/dreamer__data.md | proposal | dream 2026-11-10 data | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 9193a01faa -> 4a6cd7d2dd |
+| v67 | 2026-11-10 06:08:28Z | dreamer | proposals/dreamer__threads.md | proposal | dream 2026-11-10 threads | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 0ee5b36ae1 -> a0968457a8 |
