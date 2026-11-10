@@ -73,3 +73,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v67 | 2026-11-10 06:08:28Z | dreamer | proposals/dreamer__threads.md | proposal | dream 2026-11-10 threads | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 0ee5b36ae1 -> a0968457a8 |
 | v68 | 2026-11-10 06:08:29Z | dreamer | proposals/dreamer__lessons.md | proposal | dream 2026-11-10 lessons | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | ef61143e3a -> 6d437f8e7c |
 | v69 | 2026-11-10 06:08:31Z | dreamer | proposals/dreamer__decisions.md | proposal | dream 2026-11-10 decisions | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 0055534835 -> 5fc26cd9e2 |
+| v70 | 2026-11-10 06:08:32Z | dreamer | proposals/dreamer__INDEX.md | proposal | dream 2026-11-10 INDEX | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | ABSENT -> fef25ae655 |
