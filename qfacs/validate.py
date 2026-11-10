@@ -81,7 +81,8 @@ def validate(setup: Setup) -> list[Issue]:
                 issues.append(Issue("warning", "Reagents", r["_row"], "isotype F/P blank: isotype will be subtracted in PE units "
                                     "(assumes it has the same F/P as each antibody)"))
             else:
-                issues.append(Issue("error", "Reagents", r["_row"], "F/P is required for an antibody (lot specific, from the vial or CoA)"))
+                issues.append(Issue("warning", "Reagents", r["_row"], "F/P blank: assumed 1 (1:1 PE conjugate); enter the lot's F/P "
+                                    "from the vial or CoA if it is not 1:1"))
         mi = r.get("matched_isotype")
         if mi:
             iso = reagents.get(mi)

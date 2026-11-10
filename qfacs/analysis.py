@@ -72,6 +72,16 @@ class Results:
     settings: dict
 
 
+FP_ASSUMED = "F/P assumed 1 (blank in setup)"
+DEFAULT_FP = 1.0
+
+
+def antibody_fp(reag) -> tuple[float, bool]:
+    """F/P used to turn PE per cell into ABC, and whether the default (1, a 1:1 conjugate) was assumed."""
+    fp = reag.get("fp_ratio") if reag else None
+    return (fp, False) if fp else (DEFAULT_FP, True)
+
+
 def _norm(s):
     return re.sub(r"[^a-z0-9]", "", str(s or "").lower())
 
@@ -201,7 +211,14 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             r.flags.append("no no-antibody well: background not subtracted")
         reag = setup.reagent(r.well.reagent)
         r.net_pe = r.pe - (r.blank_pe or 0.0)
-        r.abc = r.net_pe / reag["fp_ratio"] if reag.get("fp_ratio") else None
+        if reag.get("is_isotype") == "Y":
+            # isotype with blank F/P stays in PE units (see isotype subtraction below)
+            r.abc = r.net_pe / reag["fp_ratio"] if reag.get("fp_ratio") else None
+        else:
+            fp, assumed = antibody_fp(reag)
+            r.abc = r.net_pe / fp
+            if assumed:
+                r.flags.append(FP_ASSUMED)
 
     # ---- isotype subtraction
     iso_pts = defaultdict(list)  # (isotype, cell line, plate) -> [(conc, abc)]
@@ -228,7 +245,7 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             if iso_fp:
                 r.iso_abc = iso_pe / iso_fp
             else:
-                r.iso_abc = iso_pe / reag["fp_ratio"]
+                r.iso_abc = iso_pe / antibody_fp(reag)[0]
                 r.flags.append("isotype F/P unknown: subtracted in PE units (assumes equal F/P)")
             if outside:
                 r.flags.append("concentration outside isotype range (nearest isotype point used)")
@@ -274,6 +291,8 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             fr.flags.append("isotype data missing: not subtracted")
         elif any(r for r in rs if "isotype F/P unknown: subtracted in PE units (assumes equal F/P)" in r.flags):
             fr.flags.append("isotype F/P unknown: subtracted in PE units (assumes equal F/P)")
+        if any(FP_ASSUMED in r.flags for r in rs):
+            fr.flags.append(FP_ASSUMED)
         low = [r.well.well for r in rs if any(f.startswith("low events") for f in r.flags)]
         if low:
             fr.flags.append(f"low events in {len(low)} well(s)")
