@@ -31,6 +31,8 @@ DEBRIS_LOG = 0.45         # debris floor: 0.45 log below the FSC-A mode (35% of 
 SINGLET_N_SIGMA = 3.0
 SINGLET_MIN_RATIO = 1.3     # never cut singlet width below 1.3 x its peak
 LIVE_N_SIGMA = 2.5
+DEAD_SEPARATION = 0.4      # log10 gap between live and dead peaks needed to call the main peak dead
+MIN_LIVE_FRACTION = 0.05   # ... and the dim (live) component must hold at least 5% of singlets
 LIVE_TILT = True
 POOL_PER_WELL = 3000
 
@@ -45,6 +47,7 @@ class Gates:
     ssc_min: float = -np.inf
     w_max: float = None
     live_cut: float | None = None
+    live_mode_note: str = ""
     live_slope: float = 0.0       # Live cut tilts with SSC: V6 < live_cut * (SSC / ssc_ref) ** live_slope
     ssc_ref: float = 1.0
     n_pooled: int = 0
@@ -58,6 +61,8 @@ class Gates:
             s += f"; Live {c['gate_viability']} < {self.live_cut:,.0f}"
             if self.live_slope:
                 s += f" x (SSC / {self.ssc_ref:,.0f})^{self.live_slope:.2f}"
+            if self.live_mode_note:
+                s += f" ({self.live_mode_note})"
         return s + f"; learned from {self.n_pooled:,} pooled events"
 
 
@@ -110,6 +115,45 @@ def _peak_cut(v, n_sigma, log, min_ratio=None):
     return float(10 ** cut if log else cut)
 
 
+def _two_gaussians(x, iters=200):
+    """1D two-component Gaussian mixture by EM. Returns (w_lo, mu_lo, sd_lo, w_hi, mu_hi, sd_hi)."""
+    mu = np.percentile(x, [15, 85]).astype(float)
+    sd = np.array([x.std() / 2] * 2)
+    w = np.array([0.5, 0.5])
+    for _ in range(iters):
+        pdf = w / (sd * np.sqrt(2 * np.pi)) * np.exp(-0.5 * ((x[:, None] - mu) / sd) ** 2)
+        r = pdf / np.maximum(pdf.sum(1, keepdims=True), 1e-300)
+        n = r.sum(0)
+        w = n / len(x)
+        mu = (r * x[:, None]).sum(0) / n
+        sd = np.sqrt((r * (x[:, None] - mu) ** 2).sum(0) / n).clip(0.02)
+    o = np.argsort(mu)
+    return w[o[0]], mu[o[0]], sd[o[0]], w[o[1]], mu[o[1]], sd[o[1]]
+
+
+def _live_cut(v):
+    """Live cut on the (tilted) viability signal. Normally the main peak is live: cut = mode + LIVE_N_SIGMA x its
+    dim-side width. When most cells are dead (the main peak is the bright, dead one and the live cells are a
+    dimmer peak or shoulder), the live cells are the dim component of a two-Gaussian fit on log10: cut =
+    its mean + LIVE_N_SIGMA sd, but no further than where the dead component becomes more likely."""
+    x = np.log10(np.clip(v, 100, None))
+    x = x[(x > np.percentile(x, 0.5)) & (x < np.percentile(x, 99.9))]
+    cut = np.log10(_peak_cut(v, LIVE_N_SIGMA, log=True))
+    if len(x) < 200:
+        return float(10 ** cut), ""
+    w_lo, mu_lo, sd_lo, w_hi, mu_hi, sd_hi = _two_gaussians(x)
+    main_is_dead = w_hi > w_lo and (mu_hi - mu_lo) > DEAD_SEPARATION and w_lo >= MIN_LIVE_FRACTION \
+        and cut > mu_hi
+    if not main_is_dead:
+        return float(10 ** cut), ""
+    grid = np.linspace(mu_lo, mu_hi, 400)
+    p_lo = w_lo / sd_lo * np.exp(-0.5 * ((grid - mu_lo) / sd_lo) ** 2)
+    p_hi = w_hi / sd_hi * np.exp(-0.5 * ((grid - mu_hi) / sd_hi) ** 2)
+    cross = grid[np.argmax(p_hi > p_lo)] if (p_hi > p_lo).any() else mu_hi
+    live = min(mu_lo + LIVE_N_SIGMA * sd_lo, cross)
+    return float(10 ** live), f"mostly dead: live = dim peak, {w_lo:.0%} of singlets"
+
+
 def learn(arrays, channels, use_live=True) -> Gates:
     """arrays: list of (n, 4) arrays with columns fsc, ssc, width, viability (viability may be NaN)."""
     from scipy import ndimage
@@ -147,7 +191,20 @@ def learn(arrays, channels, use_live=True) -> Gates:
             b = np.polyfit(sc[core], v6[core], 1)[0]
             g.live_slope = float(np.clip(b, 0.0, 1.0))
         resid = 10 ** (v6 - g.live_slope * (sc - np.log10(g.ssc_ref)))
-        g.live_cut = _peak_cut(resid, LIVE_N_SIGMA, log=True)
+        g.live_cut, g.live_mode_note = _live_cut(resid)
+        if g.live_mode_note:
+            # mostly dead: choose the tilt that best separates the live and dead peaks
+            best = None
+            for b in np.arange(0.0, 1.51, 0.05):
+                x = v6 - b * (sc - np.log10(g.ssc_ref))
+                x = x[(x > np.percentile(x, 0.5)) & (x < np.percentile(x, 99.9))]
+                w_lo, mu_lo, sd_lo, w_hi, mu_hi, sd_hi = _two_gaussians(x, iters=60)
+                score = (mu_hi - mu_lo) / (sd_lo + sd_hi)
+                if w_lo >= MIN_LIVE_FRACTION and (best is None or score > best[0]):
+                    best = (score, b)
+            if best:
+                g.live_slope = float(best[1])
+                g.live_cut, g.live_mode_note = _live_cut(10 ** (v6 - g.live_slope * (sc - np.log10(g.ssc_ref))))
     return g
 
 

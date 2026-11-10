@@ -40,3 +40,23 @@ def test_no_viability_dye_skips_live_gate():
     wells = [_well(rng) for _ in range(3)]
     g = learn([w for w, _ in wells], dict(autogate.SUGGESTED_CHANNELS), use_live=False)
     assert g.live_cut is None and "Live" not in g.describe()
+
+
+def test_mostly_dead_well_gates_the_dim_live_peak():
+    """When ~85% of singlets are dead, the bright dead peak is the tallest; Live must still take the dim peak."""
+    rng = np.random.default_rng(3)
+    wells = []
+    for _ in range(4):
+        arr, truth = _well(rng)
+        live = np.flatnonzero(truth)
+        dead = rng.choice(live, int(0.85 * len(live)), replace=False)
+        arr[dead, 3] = 10 ** rng.normal(5.15, 0.17, len(dead))
+        truth = truth.copy()
+        truth[dead] = False
+        wells.append((arr, truth))
+    g = learn([w for w, _ in wells], dict(autogate.SUGGESTED_CHANNELS))
+    arr, truth = wells[0]
+    m = apply(g, arr)
+    assert "mostly dead" in g.describe()
+    assert (m & truth).sum() / truth.sum() > 0.85
+    assert (m & ~truth).sum() / max(m.sum(), 1) < 0.1
