@@ -150,33 +150,113 @@ def _fits(ws, res: Results):
 
 
 def _wells(ws, res: Results):
+    """One row per well. Calculated columns are live Excel formulas, so each value can be traced cell by cell:
+    PE gMFI (input) -> PE/cell (bead curve on the Beads sheet) -> net of the no-antibody well -> / F/P = ABC ->
+    minus the isotype at the same concentration = Specific ABC."""
+    from .analysis import antibody_fp
     cols = ["Plate", "Well", "Cell line", "Reagent", "Conc (µg/mL)", "Role", "Point", "Sample", "Source file",
-            "Live events", "PE gMFI", "PE/cell", "No-antibody PE/cell", "ABC", "Isotype ABC", "Specific ABC", "Flags"]
-    _hdr(ws, 1, cols, [8, 6, 12, 10, 10, 9, 6, 18, 20, 9, 11, 11, 11, 11, 11, 11, 50])
+            "Live events", "PE gMFI", "PE/cell", "No-antibody PE/cell", "ABC", "Isotype ABC", "Specific ABC", "Flags",
+            "Net PE/cell", "F/P used", "F/P used for isotype"]
+    _hdr(ws, 1, cols, [8, 6, 12, 10, 10, 9, 6, 18, 20, 9, 11, 11, 11, 11, 11, 11, 50, 11, 9, 11])
+    notes = {"L": "= 10^((LOG10(PE gMFI) − intercept) / slope), bead curve on the Beads sheet",
+             "M": "= average PE/cell of the no-antibody well(s) of the same row (or cell line)",
+             "N": "= Net PE/cell ÷ F/P used",
+             "O": "= isotype Net PE/cell at the same concentration (interpolated on log10 conc when the "
+                  "concentrations differ) ÷ F/P used for isotype",
+             "P": "= ABC − Isotype ABC",
+             "R": "= PE/cell − No-antibody PE/cell",
+             "S": "Input: F/P of the reagent from the setup workbook (1 when left blank)",
+             "T": "Input: the isotype's F/P, or the antibody's F/P when the isotype's is blank"}
+    from openpyxl.comments import Comment
+    for col, text in notes.items():
+        ws[f"{col}1"].comment = Comment(text, "qfacs")
+    setup = res.setup
+    row_of = {id(r): i for i, r in enumerate(res.wells, 2)}
+    bead_row = {run: 2 + 4 * k for k, run in enumerate(res.beads)}      # first Beads sheet row of each bead run
+    plate_run = {p["plate_id"]: p.get("bead_run") for p in setup.plates}
+    blanks, iso = {}, {}
+    for r in res.wells:
+        w = r.well
+        if w.role == "blank" and r.pe is not None:
+            blanks.setdefault((w.plate_id, "row", w.row), []).append(r)
+            blanks.setdefault((w.plate_id, "line", w.cell_line), []).append(r)
+        if r.net_pe is not None and w.reagent and setup.reagent(w.reagent).get("is_isotype") == "Y" and w.conc_ug_ml > 0:
+            iso.setdefault((w.reagent, w.cell_line, w.plate_id), []).append(r)
+
+    def avg(rs, col="R"):
+        return "AVERAGE(" + ",".join(f"{col}{row_of[id(x)]}" for x in rs) + ")"
+
+    def iso_formula(r, i):
+        """Isotype net PE at this well's concentration, as a formula over the isotype wells' Net PE/cell cells."""
+        w = r.well
+        name = setup.reagent(w.reagent).get("matched_isotype")
+        rs = iso.get((name, w.cell_line, w.plate_id)) or [
+            x for (n, line, _), v in iso.items() if n == name and line == w.cell_line for x in v]
+        by = {}
+        for x in rs:
+            by.setdefault(x.well.conc_ug_ml, []).append(x)
+        xs = sorted(by)
+        c = w.conc_ug_ml
+        if c <= xs[0] * (1 + 1e-9):
+            return avg(by[xs[0]])
+        if c >= xs[-1] * (1 - 1e-9):
+            return avg(by[xs[-1]])
+        for x0, x1 in zip(xs, xs[1:]):
+            if x0 <= c <= x1:
+                if abs(c - x0) <= 1e-9 * x0:
+                    return avg(by[x0])
+                if abs(c - x1) <= 1e-9 * x1:
+                    return avg(by[x1])
+                e0, e1 = f"E{row_of[id(by[x0][0])]}", f"E{row_of[id(by[x1][0])]}"
+                return (f"({avg(by[x0])}+({avg(by[x1])}-{avg(by[x0])})*(LOG10(E{i})-LOG10({e0}))"
+                        f"/(LOG10({e1})-LOG10({e0})))")
+        return avg(by[xs[-1]])
+
     for i, r in enumerate(res.wells, 2):
         w = r.well
+        reag = setup.reagent(w.reagent) if w.reagent else None
+        is_iso = bool(reag) and reag.get("is_isotype") == "Y"
+        b = bead_row.get(plate_run.get(w.plate_id))
+        pe = f"=10^((LOG10(K{i})-Beads!$K${b})/Beads!$J${b})" if r.pe is not None and b else r.pe
+        blank = net = abc = iso_abc = spec = fp = iso_fp = None
+        if w.role == "titration" and r.pe is not None:
+            bl = blanks.get((w.plate_id, "row", w.row)) or blanks.get((w.plate_id, "line", w.cell_line))
+            blank = ("=" + avg(bl, "L")) if bl else None
+            net = f"=L{i}-M{i}" if bl else f"=L{i}"
+            fp = reag.get("fp_ratio") if is_iso else antibody_fp(reag)[0]
+            if r.abc is not None:
+                abc = f"=R{i}/S{i}"
+            if not is_iso and r.iso_abc is not None:
+                iso_fp = setup.reagent(reag.get("matched_isotype")).get("fp_ratio") or fp
+                iso_abc = f"={iso_formula(r, i)}/T{i}"
+                spec = f"=N{i}-O{i}"
+            elif not is_iso and r.specific is not None:
+                spec = f"=N{i}"                               # no isotype to subtract (flagged)
         vals = [w.plate_id, w.well, w.cell_line, w.reagent or "", w.conc_ug_ml, w.role, w.point, r.sample, r.source,
-                r.count, r.gmfi, r.pe, r.blank_pe, r.abc, r.iso_abc, r.specific, _flagtext(r.flags)]
+                r.count, r.gmfi, pe, blank, abc, iso_abc, spec, _flagtext(r.flags), net, fp, iso_fp]
         for j, v in enumerate(vals, 1):
             c = ws.cell(i, j, v)
             if j == 5:
                 c.number_format = "0.000"
-            elif 10 <= j <= 16:
+            elif 10 <= j <= 16 or j == 18:
                 c.number_format = "#,##0"
     ws.freeze_panes = "C2"
-    ws.auto_filter.ref = f"A1:Q{len(res.wells) + 1}"
+    ws.auto_filter.ref = f"A1:T{len(res.wells) + 1}"
 
 
 def _beads(ws, res: Results):
+    """Bead curve. Everything after the lot values and gMFIs is a live Excel formula."""
     cols = ["Bead run", "Source file", "Level", "PE/bead (lot)", "gMFI", "log10 PE", "log10 gMFI", "Back-calc. PE/bead",
             "% recovery", "Slope", "Intercept", "R²", "QC"]
     _hdr(ws, 1, cols, [9, 22, 10, 12, 10, 9, 9, 13, 10, 9, 9, 9, 40])
     r = 2
     from .calc import BEAD_KEYS, BEAD_LABELS
     for run, c in res.beads.items():
+        a, z = r, r + len(BEAD_KEYS) - 1
         for k in BEAD_KEYS:
-            vals = [run, c.source, BEAD_LABELS[k], c.pe[k], c.gmfi[k], math.log10(c.pe[k]), math.log10(c.gmfi[k]),
-                    c.pe_per_cell(c.gmfi[k]), c.recovery[k], c.slope, c.intercept, c.r2, c.qc]
+            vals = [run, c.source, BEAD_LABELS[k], c.pe[k], c.gmfi[k], f"=LOG10(D{r})", f"=LOG10(E{r})",
+                    f"=10^((G{r}-K{r})/J{r})", f"=H{r}/D{r}", f"=SLOPE($G${a}:$G${z},$F${a}:$F${z})",
+                    f"=INTERCEPT($G${a}:$G${z},$F${a}:$F${z})", f"=RSQ($G${a}:$G${z},$F${a}:$F${z})", c.qc]
             for j, v in enumerate(vals, 1):
                 cell = ws.cell(r, j, v)
                 cell.number_format = {4: "#,##0", 5: "#,##0", 8: "#,##0", 9: "0.0%", 12: "0.00000"}.get(j, "0.0000" if j in (6, 7, 10, 11) else "General")

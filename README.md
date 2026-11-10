@@ -57,6 +57,8 @@ Inputs are FlowJo table exports (.xls, .xlsx, .csv or .txt), one row per sample 
 - a bead export (name contains "bead") with gates named Low, Med Low, Med High and High.
 
 The results workbook has Summary (cell line x antibody antigens/cell and flags), Plots, Fits, Wells, Beads and Issues.
+On Wells and Beads the calculated columns are live Excel formulas (bead curve, PE/cell, no-antibody background,
+ABC, isotype ABC, specific ABC), so every value can be traced cell by cell. Bmax and Kd on Fits are fitted values.
 
 Method:
 1. Bead curve per bead run: log10(gMFI) = slope x log10(PE/bead) + intercept; QC = R² and 80-120 % recovery.

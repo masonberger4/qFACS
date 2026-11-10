@@ -142,3 +142,40 @@ def test_blank_antibody_fp_defaults_to_1_and_is_flagged():
     if fp == 1:
         assert f.antigens == pytest.approx(ref[("H1975", "CD58")].antigens, rel=1e-9)
     assert [i for i in res.issues if i.level == "error"] == []
+
+
+def test_wells_sheet_formulas_recalculate_to_engine_values(tmp_path):
+    """Wells and Beads carry live formulas; recalculated by LibreOffice they equal the engine's numbers."""
+    import shutil
+    import subprocess
+    from openpyxl import load_workbook
+    from qfacs.report import write_results
+    from qfacs.setup_io import read_setup
+    s, _ = read_setup(EX / "Exp2290_Set2_setup.xlsx")
+    files = sorted(p for p in EX.iterdir() if p.suffix.lower() in (".xls", ".xlsx", ".csv", ".txt"))
+    beads = [str(p) for p in files if "bead" in p.name.lower()]
+    cells = [str(p) for p in files if str(p) not in beads and p.name.startswith("Plate")]
+    res = analyze(s, cells, beads)
+    out = tmp_path / "res.xlsx"
+    write_results(res, out)
+    ws = load_workbook(out)["Wells"]
+    assert sum(str(c.value).startswith("=") for c in ws["L"]) > 50
+    assert any(str(c.value).startswith("=N") for c in ws["P"])
+    soffice = shutil.which("soffice")
+    if not soffice:
+        pytest.skip("LibreOffice not installed: formulas not recalculated")
+    conv = tmp_path / "conv"
+    subprocess.run([soffice, "--headless", f"-env:UserInstallation=file://{tmp_path}/lo", "--convert-to", "xlsx",
+                    "--outdir", str(conv), str(out)], check=True, capture_output=True, timeout=180)
+    rows = list(load_workbook(conv / "res.xlsx", data_only=True)["Wells"].iter_rows(min_row=2, values_only=True))
+    assert len(rows) == len(res.wells)
+    n = 0
+    for row, r in zip(rows, res.wells):
+        for got, want in ((row[11], r.pe), (row[12], r.blank_pe), (row[13], r.abc), (row[14], r.iso_abc),
+                          (row[15], r.specific)):
+            if want is None:
+                assert got in (None, "")
+            else:
+                assert got == pytest.approx(want, rel=1e-6, abs=1e-6)
+                n += 1
+    assert n > 200
