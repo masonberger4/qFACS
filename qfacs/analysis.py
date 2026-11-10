@@ -2,8 +2,11 @@
 
 Steps (README has the full description):
 1. Bead curve per bead run.  2. Per well: gMFI -> PE/cell; ABC = (PE - same-row no-antibody PE) / F:P.
-3. Subtract the matched isotype's ABC at the same concentration (same cell line, log-concentration interpolation).
-4. One-site fit per cell line x antibody; antigens/cell = Bmax x valency.
+3. Isotype model (default): subtract the matched isotype's ABC at the same concentration (same cell line,
+   log-concentration interpolation), then one-site fit Bmax*C/(Kd+C).
+   NS model: no isotype subtraction; total-binding fit Bmax*C/(Kd+C) + NS*C (never both, which would remove the
+   background twice). When isotype data exists, the other model's Bmax is reported as a cross-check.
+4. Antigens/cell = Bmax x valency.
 QC conditions become flags; nothing is excluded automatically.
 """
 from __future__ import annotations
@@ -14,8 +17,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .calc import BeadCurve, FitResult, fit_beads, one_site_fit
+from .calc import BeadCurve, FitResult, fit_beads, ns_fit, one_site_fit
 from .model import Issue, Setup, Well
+from .schema import fit_model_of
 from .stats_io import bead_gmfis, read_table, well_stats
 from .validate import isotype_mismatch, validate
 from .wellmap import expand_wells
@@ -35,7 +39,8 @@ class WellResult:
     net_pe: float | None = None        # PE minus the no-antibody background
     abc: float | None = None
     iso_abc: float | None = None
-    specific: float | None = None
+    specific: float | None = None      # value that goes into the fit (isotype-subtracted, or ABC for NS)
+    iso_sub: float | None = None       # ABC - isotype ABC whenever isotype data exists (cross-check input)
     flags: list = field(default_factory=list)
 
 
@@ -53,6 +58,11 @@ class FitRow:
     kd_nm: float | None = None
     saturation: str = ""
     flags: list = field(default_factory=list)
+    model: str = "Isotype"           # "Isotype" | "NS"
+    ns_top: float | None = None      # NS model: non-specific ABC at the top conc (NS x top conc)
+    ns_share_top: float | None = None  # NS model: share of the fitted top-dose signal that is non-specific
+    cross: FitResult | None = None   # the other model's fit, when isotype data exists
+    cross_antigens: float | None = None
 
     @property
     def status(self):
@@ -233,7 +243,13 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
         iso = reag.get("matched_isotype")
         pts = iso_pts.get((iso, r.well.cell_line, r.well.plate_id)) or [
             p for (i, line, _), v in iso_pts.items() if i == iso and line == r.well.cell_line for p in v]
-        if not iso:
+        if fit_model_of(reag, exp) == "NS":
+            r.specific = r.abc                       # NS fit takes ABC straight; the isotype is only a cross-check
+            if iso and pts:
+                iso_pe, _ = interp_log(pts, r.well.conc_ug_ml)
+                r.iso_abc = iso_pe / (setup.reagent(iso).get("fp_ratio") or antibody_fp(reag)[0])
+                r.iso_sub = r.abc - r.iso_abc
+        elif not iso:
             r.specific = r.abc
             r.flags.append("no matched isotype: not subtracted")
         elif not pts:
@@ -249,7 +265,7 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
                 r.flags.append("isotype F/P unknown: subtracted in PE units (assumes equal F/P)")
             if outside:
                 r.flags.append("concentration outside isotype range (nearest isotype point used)")
-            r.specific = r.abc - r.iso_abc
+            r.specific = r.iso_sub = r.abc - r.iso_abc
 
     # ---- fits per cell line x antibody (replicate plates pooled)
     groups = defaultdict(list)
@@ -259,15 +275,23 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             groups[(r.well.cell_line, r.well.reagent)].append(r)
     for (line, name), rs in sorted(groups.items()):
         reag = setup.reagent(name)
+        model = fit_model_of(reag, exp)
         pts = [(r.well.conc_ug_ml, r.specific) for r in rs if r.specific is not None]
-        fr = FitRow(line, name, reag, sorted({r.well.plate_id for r in rs}), sorted(pts), one_site_fit(*zip(*pts)) if len(pts) >= 4 else one_site_fit([], []))
+        fr = FitRow(line, name, reag, sorted({r.well.plate_id for r in rs}), sorted(pts), _fit(model, pts), model=model)
         fit = fr.fit
+        # cross-check with the other model when every point has isotype data
+        valency = reag.get("valency") or DEFAULTS["valency"]
+        if pts and all(r.iso_sub is not None for r in rs if r.specific is not None):
+            other = [(r.well.conc_ug_ml, r.iso_sub if model == "NS" else r.abc) for r in rs if r.specific is not None]
+            fr.cross = _fit("Isotype" if model == "NS" else "NS", other)
+            if fr.cross.bmax is not None and not fr.cross.nd:
+                fr.cross_antigens = fr.cross.bmax * valency
         fr.flags += [f for f in fit.flags if not fit.nd or f.startswith("too few")]
         if pts:
             fr.top_conc = max(c for c, _ in pts)
             fr.top_specific = sum(v for c, v in pts if c == fr.top_conc) / sum(1 for c, _ in pts if c == fr.top_conc)
         if fit.bmax is not None and not fit.nd:
-            fr.antigens = fit.bmax * (reag.get("valency") or DEFAULTS["valency"])
+            fr.antigens = fit.bmax * valency
             fr.kd_nm = fit.kd * 1000 / (reag.get("mw_kda") or DEFAULTS["mw_kda"])
             ratio = fr.top_conc / fit.kd
             k = settings["saturation_k"]
@@ -277,15 +301,29 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
             if fit.r2 is not None and fit.r2 < 0.9:
                 fr.flags.append(f"poor fit (R² {fit.r2:.2f})")
             if fit.bmax_se and fit.bmax_se / fit.bmax > 0.25:
-                fr.flags.append("Bmax imprecise (SE > 25%)")
+                fr.flags.append("Bmax imprecise (SE > 25%)" if model != "NS" else
+                                "Bmax CI wide (SE > 25%; Bmax and NS trade off: add doses past saturation)")
             if fit.at_bound:
                 fr.flags.append("Kd at search bound: check curve")
-        elif fit.nd and len(pts) >= 4:
-            fr.flags.append("ND: no specific binding above isotype")
+            if model == "NS":
+                fr.flags += _ns_flags(fr, pts)
+        elif fit.nd and len(pts) >= (5 if model == "NS" else 4):
+            fr.flags.append("ND: no specific binding above isotype" if model != "NS" else
+                            "ND: no saturable binding above the non-specific line (NS fit)")
+        if model == "NS" and fit.ns is not None and fr.top_conc:
+            fr.ns_top = fit.ns * fr.top_conc
+            total = fit.predict(fr.top_conc)
+            fr.ns_share_top = fr.ns_top / total if total else None
+        if fr.antigens is not None and fr.cross_antigens is not None and model == "NS":
+            d = fr.cross_antigens / fr.antigens - 1
+            if abs(d) > CROSS_TOL:
+                fr.flags.append(f"isotype-method antigens/cell differ by {d:+.0%} from NS fit")
         iso_rec = setup.reagent(reag.get("matched_isotype")) if reag.get("matched_isotype") else None
         if iso_rec and isotype_mismatch(reag, iso_rec):
             fr.flags.append(f"isotype mismatch with {reag.get('matched_isotype')}")
-        if any(r for r in rs if "no matched isotype: not subtracted" in r.flags):
+        if model == "NS":
+            pass                          # no isotype subtraction by design
+        elif any(r for r in rs if "no matched isotype: not subtracted" in r.flags):
             fr.flags.append("no matched isotype: not subtracted")
         elif any(r for r in rs if "isotype data missing: not subtracted" in r.flags):
             fr.flags.append("isotype data missing: not subtracted")
@@ -308,6 +346,30 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
                 fr.flags.append(f"bead curve {c.bead_run}: {c.qc}")
         res.fits.append(fr)
     return res
+
+
+CROSS_TOL = 0.25          # NS vs isotype-method antigens/cell: flag a larger relative difference
+NS_SHARE_MAX = 0.5        # flag when non-specific binding is more than this share of the top-dose signal
+
+
+def _fit(model, pts):
+    if model == "NS":
+        return ns_fit(*zip(*pts)) if len(pts) >= 5 else ns_fit([], [])
+    return one_site_fit(*zip(*pts)) if len(pts) >= 4 else one_site_fit([], [])
+
+
+def _ns_flags(fr: FitRow, pts) -> list:
+    """QC for the NS (total-binding) fit: Kd inside the doses tested, NS not dominating the top dose."""
+    fit, out = fr.fit, []
+    doses = [c for c, _ in pts if c > 0]
+    if doses and fit.kd < min(doses):
+        out.append(f"Kd ({fit.kd:.3g} µg/mL) below the lowest dose ({min(doses):.3g}): Kd poorly defined")
+    if doses and fit.kd > max(doses):
+        out.append(f"Kd ({fit.kd:.3g} µg/mL) above the top dose ({max(doses):.3g}): Bmax and NS not separable")
+    total = fit.predict(fr.top_conc) if fr.top_conc else None
+    if total and fit.ns is not None and fit.ns * fr.top_conc / total > NS_SHARE_MAX:
+        out.append(f"non-specific is {fit.ns * fr.top_conc / total:.0%} of the top-dose signal")
+    return out
 
 
 def interp_log(pts, conc):

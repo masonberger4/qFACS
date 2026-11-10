@@ -12,6 +12,7 @@ TEMPLATE_VERSION = "1"
 ROWS = "ABCDEFGH"
 NCOLS = 12
 
+FIT_MODELS = ["Isotype", "NS"]
 CONTROL_TYPES = ["Unstained", "PE only", "Live/dead only", "Reporter only", "Other"]
 YN = ["Y", "N"]
 
@@ -62,6 +63,11 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("saturation_k", "Saturated when top conc ≥ k × Kd (k)", "number",
           help="Suggested 5 (pre-filled; blank = 5); use 10 for a stricter check. Kd comes from the fit. At 5×Kd ~83% of antigen is bound, at 10×Kd ~91%. "
                "If the top conc is below k×Kd, Bmax is extrapolated and flagged 'not saturated'. Lower k if stock conc limits you."),
+    Field("fit_model", "Fit model default (Isotype / NS)", "choice", choices=tuple(FIT_MODELS),
+          help="Blank = Isotype. Isotype: subtract the matched isotype, then fit Bmax*C/(Kd+C). "
+               "NS: no isotype subtraction; fit total binding Bmax*C/(Kd+C) + NS*C, where NS*C is the non-specific signal. "
+               "NS needs top doses well past saturation (ideally ≥10× Kd, several points on the plateau). "
+               "Each antibody can override this on the Reagents sheet."),
     Field("gate_fsc", "Auto gating: forward scatter (area)",
           help="Suggested FSC-A (pre-filled; blank = FSC-A). Only used when a plate has .fcs files but no FlowJo .wsp: "
                "the program then draws Cells > Single Cells > Live itself, one set of gates per plate and cell line. "
@@ -109,7 +115,11 @@ REAGENTS = Sheet("Reagents", "table", "PE reagents, including isotype controls",
           help="Blank = 1 (antigens/cell reported as ABC)."),
     Field("mw_kda", "MW (kDa)", "number", help="For Kd in nM. Blank = 150."),
     Field("matched_isotype", "Matched isotype (Name)", "choice", choices=("@isotypes",), width=16,
-          help="Isotype row subtracted from this antibody."),
+          help="Isotype row subtracted from this antibody. Optional for NS-fit antibodies: when given and run, "
+               "the isotype-method result is reported next to the NS result as a cross-check."),
+    Field("fit_model", "Fit model (Isotype / NS)", "choice", choices=tuple(FIT_MODELS), width=12,
+          help="Blank = the Experiment sheet's default (Isotype if that is blank too). NS fits non-specific binding "
+               "instead of subtracting an isotype, so no isotype wells are needed."),
     Field("notes", "Notes", width=40),
 ), help="Every value here is lot specific and entered by the user; nothing is pre-filled.")
 
@@ -163,3 +173,12 @@ HELP_ROW = 2
 HEADER_ROW = 4
 FIRST_DATA_ROW = 5
 TABLE_ROWS = {"Beads": 10, "Reagents": 30, "Cell_Lines": 60, "Plates": 40, "Layout": 320, "Controls": 120}
+
+
+def fit_model_of(reagent: dict | None, experiment: dict | None) -> str | None:
+    """'Isotype' or 'NS' for an antibody: its own choice, else the experiment default, else Isotype.
+    None when the value typed is not a known model (validate reports it)."""
+    for v in ((reagent or {}).get("fit_model"), (experiment or {}).get("fit_model")):
+        if v not in (None, ""):
+            return next((m for m in FIT_MODELS if m.lower() == str(v).strip().lower()), None)
+    return "Isotype"
