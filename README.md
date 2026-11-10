@@ -96,7 +96,8 @@ python -m qfacs analyze FOLDER/my_setup.xlsx FOLDER
 - Geometric mean is computed the FlowJo v10 way: averaged on the parameter's biexponential display transform from
   the workspace, then transformed back. On Exp2290 Plate 1 this matches FlowJo's export to a median +0.2%
   (90% of wells within 0.5%); counts match to a median of <0.5%. Final antigens/cell agree within 0.3%.
-- Beads: the bead .fcs (named on the Beads sheet, containing "bead", or the only .fcs left over) is gated
+- Beads: if a .wsp holds gates named Low, Med Low, Med High and High (a bead tube workspace), those hand-drawn
+  gates are used. Otherwise the bead .fcs (named on the Beads sheet, containing "bead", or the only .fcs left over) is gated
   automatically: the four peaks on log PE, valley to valley. On Exp2290 this is within 3% of the manual FlowJo gates.
 
 ## From .fcs only (no FlowJo workspace)

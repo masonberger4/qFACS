@@ -51,3 +51,15 @@ def test_bead_autogate_close_to_flowjo():
     flowjo = dict(Low=1661, **{"Med Low": 16383, "Med High": 72239, "High": 197572})
     for g, v in flowjo.items():
         assert row[f"Beads/{g} | Geometric Mean (B5 (575)-A)"] == pytest.approx(v, rel=0.03), g
+
+
+def test_is_bead_workspace(tmp_path):
+    from qfacs.fcs_io import is_bead_workspace
+    beads = tmp_path / "beads.wsp"
+    beads.write_text('<Workspace><Population name="Beads"/>' + "".join(
+        f'<Population name="{g}" count="1"/>' for g in ("Low", "Med Low", "Med High", "High")) + "</Workspace>")
+    cells = tmp_path / "cells.wsp"
+    cells.write_text('<Workspace><Population name="Cells"/><Population name="Single Cells"/>'
+                     '<Population name="Live"/></Workspace>')
+    assert is_bead_workspace(beads)
+    assert not is_bead_workspace(cells)
