@@ -1,8 +1,9 @@
 # Live status
 Short, current. Overwrite freely (by a writer). What is in flight, what is blocked, what needs the owner.
 
-2026-11-06 (dreamer):
-- Done: phase 1 setup template + validator (PR #2), phase 2 engine from FlowJo exports (PR #2, Excel v1 Plate 1 regression to 0.1%), confirmed F/P (PR #3), phase 3 .fcs + .wsp reader with FlowJo-style gMFI and auto bead peaks (PR #5). PRs #1-#5 all merged into `main`. Test kit: /mnt/project-files/test_run/qFACS_test_run.zip (Windows .bat launchers untested). Cloud runs: Mase uploads setup + data to the build thread and Claude runs it.
-- Waiting on Mase: edited setup workbook (test_run/to_edit/), then .fcs files for a real run (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBJfoD2hGW6jMo42kwoAXNrM). For better auto gating: one gated .wsp + .fcs per common cell line, a live/dead-only or heat-killed control, PE-only and reporter-only controls.
-- Next build work: phase 4 (gate library per cell line, Live cutoff, unmixing).
-- Needs Mase: confirm "AWAITING" analysis defaults in decisions.md; approve memory proposals.
+2026-11-10 (dreamer S1, updated by curator with Mase's gating decision):
+- Done: phases 1-3 (PRs #2,#3,#5). PR #7 optional F/P (blank = 1, flagged) + first auto gating for .fcs-only runs + CHO-EGFR example. PRs #8 (debris floor, Imaging SSC singlets, tilted Live), #9 (SSC-A floor on Cells), #10 (Live gate for mostly-dead wells) all merged into `main` by 2026-11-10 04:33Z. Memory PR #6 merged.
+- Auto gating vs Mase's .wsp, 9 lines: within ~4% on CHO-EGFR, U-87 MG, A431, MCF7, FaDu, SHP77; H82 ~16% (singlet gate tighter), Kasumi 2 ~24% (Live tail trim), CORL279 wrong FSC population (~12x).
+- Decided (Mase, 2026-11-10): gating is manual. Mase draws Cells > Single Cells > Live in FlowJo and supplies the .wsp; qFACS automates everything after that. Auto gating stays only as a flagged fallback; rule tuning stopped. See decisions.md.
+- Waiting on Mase (thread "Finish qFACS setup template from run"): go-ahead on 3 proposed additions (use bead gates from the .wsp, gate-check sheet in results, one run over a folder of several plates); confirm Plate 2-4 layouts (assumed Plate 1 antibody order); Plates 2-4 have no bead tube (Plate 1 beads used).
+- Needs Mase: confirm AWAITING defaults in decisions.md; approve memory proposals.
