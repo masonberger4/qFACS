@@ -105,15 +105,15 @@ Any .fcs not covered by a .wsp is gated automatically (`qfacs/autogate.py`), the
 one set of Cells > Single Cells > Live gates is learned per plate and cell line from all of that line's wells
 pooled, then applied to every well.
 - Cells: main FSC-A / SSC-A population (density hull) above a debris cut at the valley below the main log FSC-A
-  peak (never below 35% of the FSC-A mode).
+  peak (never below 35% of the FSC-A mode), and an SSC-A floor 0.6 log below the SSC-A mode.
 - Single Cells: SSC-W below its main peak + 3 sigma (narrow side), and at least 1.3 x the peak.
 - Live: viability dye (V6 (515)-A) below mode + 2.5 x the live peak's dim-side width, tilted with SSC like a
   hand-drawn V6 vs SSC gate. Type `none` on the
   Experiment sheet when no dye was used.
 - Channels are set on the Experiment sheet (A8 defaults pre-filled). The learned gates are listed in the
   results' notes.
-- Check against Mase's hand gates (same .fcs, same PE display transform), PE gMFI per well: CHO-EGFR median 0.6%
-  (max 1.9%), U-87 MG median 3.3% (max 5.1%), A431 median 1.5% (max 5.5%). Antigens/cell vs the .wsp route:
-  CHO-EGFR EGFR +2.6%; U-87 MG CD58 +2.6%, B7H3 +3.1%; A431 CD58 -3.4%, B7H3 -4.2%.
+- Check against Mase's hand gates (same .fcs files), antigens/cell auto vs hand-gated, 5 cell lines on 3 plates:
+  CHO-EGFR EGFR +3.0%; U-87 MG CD58 +3.0%, B7H3 +3.5%; A431 CD58 -2.0%, B7H3 -2.7%; MCF7 CD58 +1.8%,
+  B7H3 -1.6%; FaDu CD58 -5.2%, B7H3 -3.2%.
 - With no workspace, PE gMFI uses the default biex display transform (positive 6.45, width -1000). FlowJo's gMFI
   depends on the transform set in each workspace, so expect a few % difference from a FlowJo export.

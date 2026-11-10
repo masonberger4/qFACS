@@ -4,17 +4,16 @@ Like a hand-gated FlowJo group, one set of gates is learned per plate and cell l
 pooled) and the same gates are applied to every well:
 
 - Cells: the main FSC-A / SSC-A population. The convex hull of the 2D density above 2% of its peak, enlarged 10%
-  about its centre, above a debris cut at the valley below the main log FSC-A peak (never below 35% of the FSC-A mode).
+  about its centre, above a debris cut at the valley below the main log FSC-A peak (never below 35% of the FSC-A mode)
+  and an SSC-A floor 0.6 log below the SSC-A mode (events with almost no side scatter are not cells).
 - Single Cells: SSC-W below its main peak + 3 x the peak's narrow-side width, and at least 1.3 x the peak
   (doublets and clumps are wider).
 - Live: viability dye low. Cut = mode + 2.5 x the dim-side width of the main (live) peak, on log10 of the dye,
   tilted with SSC like a hand-drawn V6 vs SSC gate (slope of the live peak's log V6 on log SSC, 0-1).
 
-Checked against Mase's hand gates (same PE display transform), PE gMFI per well vs FlowJo gating:
-  CHO-EGFR (05-Nov-2026.wsp, rows A-B):  median 0.6%, 90% of wells within 1.3%, max 1.9%
-  U-87 MG (02-Nov-2026.wsp, rows A-D):   median 3.3%, 90% within 4.5%, max 5.1%
-  A431 (02-Nov-2026.wsp, rows E-H):      median 1.5%, 90% within 4.2%, max 5.5%
-Antigens/cell vs the same plates gated by hand: within 4.2% (CHO-EGFR EGFR, U-87 MG and A431 CD58 / B7H3).
+Checked against Mase's hand gates (same .fcs, same PE display transform), antigens/cell auto vs hand-gated:
+  CHO-EGFR EGFR +3.0%; Exp2290 Plate 1 U-87 MG CD58 +3.0%, B7H3 +3.5%, A431 CD58 -2.0%, B7H3 -2.7%;
+  Plate 2 MCF7 CD58 +1.8%, B7H3 -1.6%, FaDu CD58 -5.2%, B7H3 -3.2%.
 """
 from __future__ import annotations
 
@@ -27,6 +26,7 @@ SUGGESTED_CHANNELS = dict(gate_fsc="FSC-A", gate_ssc="SSC (Violet)-A", gate_widt
                           gate_viability="V6 (515)-A")
 CELLS_DENSITY_FRAC = 0.02
 CELLS_EXPAND = 1.1
+SSC_DEBRIS_LOG = 0.6       # side-scatter floor: 0.6 log below the SSC-A mode of the non-debris events
 DEBRIS_LOG = 0.45         # debris floor: 0.45 log below the FSC-A mode (35% of it)
 SINGLET_N_SIGMA = 3.0
 SINGLET_MIN_RATIO = 1.3     # never cut singlet width below 1.3 x its peak
@@ -42,6 +42,7 @@ class Gates:
     scale: np.ndarray = None
     centre: np.ndarray = None
     fsc_min: float = 0.0
+    ssc_min: float = -np.inf
     w_max: float = None
     live_cut: float | None = None
     live_slope: float = 0.0       # Live cut tilts with SSC: V6 < live_cut * (SSC / ssc_ref) ** live_slope
@@ -51,7 +52,7 @@ class Gates:
 
     def describe(self):
         c = self.channels
-        s = (f"Cells on {c['gate_fsc']} / {c['gate_ssc']} (FSC-A > {self.fsc_min:,.0f}); "
+        s = (f"Cells on {c['gate_fsc']} / {c['gate_ssc']} (FSC-A > {self.fsc_min:,.0f}, SSC-A > {self.ssc_min:,.0f}); "
              f"Single Cells {c['gate_width']} < {self.w_max:,.0f}")
         if self.live_cut is not None:
             s += f"; Live {c['gate_viability']} < {self.live_cut:,.0f}"
@@ -74,7 +75,7 @@ def _density_core(x, y, frac, bins=160):
     return m[ix, iy] & (x >= rx[0]) & (x <= rx[1]) & (y >= ry[0]) & (y <= ry[1])
 
 
-def _debris_cut(fsc):
+def _debris_cut(fsc, floor_log=None):
     """FSC-A below which events are debris: the deepest point of the smoothed log10 FSC-A histogram between
     (main peak - 1.5) and the main peak, if a debris peak lies left of it, and never below main peak - DEBRIS_LOG."""
     from scipy import ndimage
@@ -87,7 +88,7 @@ def _debris_cut(fsc):
     win = np.flatnonzero((c >= c[pk] - 1.5) & (c <= c[pk]))
     j = win[int(np.argmin(hs[win]))]
     # a real valley: well below the main peak, with a debris peak to its left
-    floor = 10 ** (c[pk] - DEBRIS_LOG)
+    floor = 10 ** (c[pk] - (DEBRIS_LOG if floor_log is None else floor_log))
     if 0 < j < pk and hs[j] < 0.5 * hs[pk] and hs[:j].max() > 1.5 * hs[j]:
         return float(max(10 ** c[j], floor))
     return float(floor)
@@ -119,6 +120,10 @@ def learn(arrays, channels, use_live=True) -> Gates:
     # Cells: debris cut at the valley below the main log FSC-A peak, then the main FSC-A / SSC-A blob above it
     g.fsc_min = _debris_cut(pool[:, 0])
     keep = pool[:, 0] > g.fsc_min
+    if SSC_DEBRIS_LOG is not None:
+        # events with almost no side scatter for their size (noise, bare nuclei) are not cells
+        g.ssc_min = _debris_cut(pool[keep, 1], SSC_DEBRIS_LOG)
+        keep &= pool[:, 1] > g.ssc_min
     core = pool[keep][_density_core(pool[keep, 0], pool[keep, 1], CELLS_DENSITY_FRAC)][:, :2]
     g.scale = core.std(0)
     pts = core / g.scale
@@ -150,7 +155,7 @@ def _cells(g: Gates, arr):
     from scipy.spatial import Delaunay
     q = arr[:, :2] / g.scale
     tri = Delaunay(g.hull_pts)
-    return (tri.find_simplex(g.centre + (q - g.centre) / CELLS_EXPAND) >= 0) & (arr[:, 0] > g.fsc_min)
+    return (tri.find_simplex(g.centre + (q - g.centre) / CELLS_EXPAND) >= 0) & (arr[:, 0] > g.fsc_min) & (arr[:, 1] > g.ssc_min)
 
 
 def _singlets(g: Gates, a, w):
