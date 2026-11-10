@@ -1,15 +1,10 @@
-<!-- proposal by dreamer at 2026-11-06 06:05:47Z; target: decisions.md; reason: dream 2026-11-06 D1+D2 (fix msg id); link: cmsg_01Y3oxsYABfATcqbm4kp4uVBYBrSGgMT86dfZANPwNVPnL; cmsg_01Y3oxsYABfATcqbm4kp4uVB3K3YvQcdpsxojTs6h3xz93; cmsg_01Y3oxsYABfATcqbm4kp4uVBCkEZeAZDooPGEubdXQxD3e; status: merged v55 (D1+D2) -->
-[D1 HIGH] Append to Log (supersedes open proposal qfacs-build-thread__decisions.md, mark it merged with this):
-- 2026-11-05, Mase: Exp2290 Set 2 Plate 1 layout confirmed: U-87 MG rows A-D, A431 rows E-H, each row CD58, B7H3, DLL3, mIgG1; 50 ug/mL top, 1.8x (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBYBrSGgMT86dfZANPwNVPnL "1 correct").
-- 2026-11-05, Mase: Exp2290 F/P: CD58 1.24, B7H3 1.2 (from setup sheet); DLL3 (Novus NBP3-45128PE, lot D224308) 1.357 from vial label confirmed (msg cmsg_01Y3oxsYABfATcqbm4kp4uVB3K3YvQcdpsxojTs6h3xz93 "#2 that works"). Experiment-specific inputs, not defaults.
-- 2026-11-05, Mase: every user-entered setting in the setup workbook gets a note telling the user how to obtain it and/or a suggested value (msgs cmsg_01Y3oxsYABfATcqbm4kp4uVBCkEZeAZDooPGEubdXQxD3e, cmsg_01Y3oxsYABfATcqbm4kp4uVBRax1nhtLCdXxrenZSXNnLu "and/or provide a suggestion").
-- 2026-11-05, Mase: wants cloud runs: Mase uploads setup + data to the thread, Claude runs and returns results (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBVYHb9u3iq6WqVrkphLpH2c).
-- Digest line (add): "Setup inputs always user-entered, each with a how-to note and suggested value (2026-11-05)."
-
-[D2 HIGH] Append to "Proposed analysis defaults, AWAITING Mase" (Claude recommendations, NOT decided):
-- Isotype with blank F/P: subtract in PE units assuming antibody F/P, flagged. Asked of Mase (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBXL6Z4fy1Zwcv9mGRRNFN6d Q1) but never answered; "#2 that works" answered Q2 only.
-- Order: convert each gMFI to PE/ABC first, then subtract (curve slope != 1). BD insert is silent on isotype/background (msg cmsg_01Y3oxsYABfATcqbm4kp4uVB5pUKGBHTVgDVGomW8Y92g1).
-- QC suggestions pre-filled in template: min live events 1000, bead R^2 min 0.98, saturated when top conc >= k x Kd with k = 5 (Claude conventions, not BD).
-- Auto gating plan (phase 4): gate library with one reference Cells gate per cell line fit to new plates, fixed Singlets (FSC-A vs FSC-H) and Live (V6 low) rules, gate-plot QC sheet.
-Evidence: build thread 2026-11-05 21:22Z-23:36Z.
-Uplift: prevents re-asking confirmed layout/F/P, and stops PE-unit isotype subtraction and QC thresholds being treated as owner decisions.
+<!-- proposal by dreamer at 2026-11-10 06:08:31Z; target: decisions.md; reason: dream 2026-11-10 decisions; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: open -->
+[D1 HIGH] Append to Log:
+- 2026-11-10, Mase: threads are small and focused (one task per thread, new ask = new thread) and rely on memory/ for context (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBSgXw9hrEBxkeHCFbaUMMyg). Digest: replace "Project-specific rules: none yet" with "Threads small and focused, one task each, rely on memory (2026-11-10)".
+- 2026-11-10, Mase: bead lot 42618 (474 / 5359 / 23843 / 62336 PE/bead) is the lot in hand, from the kit flyer (thread "Test run from only fcs and sheet", notes scratch/test-run-fcs-sheet/notes.md). Still user-entered per run, not a default. Note: data.md lists this lot as expired 2022-10-31; worth a QC flag.
+- 2026-11-10, Mase (antibody table screenshot): stock conc CD58 400, B7H3 350, DLL3 800, mIgG1 200 ug/mL (Exp2290).
+[D2 HIGH] Append to AWAITING (Claude recommendations, NOT Mase decisions):
+- F/P optional, blank = 1 and flagged (PR #7). Came from Claude's answer to Mase's question "is F/P completely necessary" (cmsg_01Y3oxsYABfATcqbm4kp4uVBDQ8BjtwDzVwQAMF79XcW23); Mase merged PR #7 but did not state the rule. Note it relaxes the 2026-11-05 "never hard-code F/P" rule only as a flagged fallback.
+- Gating strategy (open decision card, 2026-11-10): recommended per-cell-line gate library from Mase's own gates; alternatives keep tuning rules / always use .wsp. Unanswered.
+- Plates 2-4 antibody order assumed = Plate 1; MCF7 Live channel V5 vs V6 asked, unanswered.
+Uplift: prevents re-asking the bead lot; keeps the F/P default and gating plan marked as Claude's until Mase rules.
