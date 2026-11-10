@@ -260,7 +260,7 @@ def gate_folder(folder, setup, out_dir=None):
                 cells.append(write_table(t, out_dir / f"{pid}_{wsp.stem}_gated.xlsx"))
                 notes.append(f"{wsp.name}: gated {len(t.rows)} samples from {d.name} for {pid}")
             # a bead .fcs named on the Beads sheet may sit next to the plate's .fcs files
-            used |= {p for p in d.glob("*.fcs") if p.stem.lower() not in bead_names}
+            used |= {p for p in d.glob("*.fcs") if p.stem.lower() not in bead_names and "bead" not in p.name.lower()}
     rest = [p for p in fcs if p not in used]
     no_wsp = []
     for p in rest:
