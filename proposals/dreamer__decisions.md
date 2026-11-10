@@ -1,4 +1,4 @@
-<!-- proposal by dreamer at 2026-11-10 06:08:31Z; target: decisions.md; reason: dream 2026-11-10 decisions; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: open -->
+<!-- proposal by dreamer at 2026-11-10 06:08:31Z; target: decisions.md; reason: dream 2026-11-10 decisions; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: partly merged v74: D2 applied (gating line dropped, decided); D1 still open -->
 [D1 HIGH] Append to Log:
 - 2026-11-10, Mase: threads are small and focused (one task per thread, new ask = new thread) and rely on memory/ for context (msg cmsg_01Y3oxsYABfATcqbm4kp4uVBSgXw9hrEBxkeHCFbaUMMyg). Digest: replace "Project-specific rules: none yet" with "Threads small and focused, one task each, rely on memory (2026-11-10)".
 - 2026-11-10, Mase: bead lot 42618 (474 / 5359 / 23843 / 62336 PE/bead) is the lot in hand, from the kit flyer (thread "Test run from only fcs and sheet", notes scratch/test-run-fcs-sheet/notes.md). Still user-entered per run, not a default. Note: data.md lists this lot as expired 2022-10-31; worth a QC flag.
