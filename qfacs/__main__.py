@@ -21,6 +21,10 @@ from .wellmap import expand_wells
 
 
 def main(argv=None) -> int:
+    # Windows consoles and redirected output often use cp1252, which has no κ, µ etc.: never crash on printing
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     ap = argparse.ArgumentParser(prog="qfacs")
     sub = ap.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("template", help="write a blank setup workbook")
@@ -50,7 +54,7 @@ def main(argv=None) -> int:
     print(summarize(issues))
     if a.wells:
         wells, _ = expand_wells(setup)
-        with open(a.wells, "w", newline="") as fh:
+        with open(a.wells, "w", newline="", encoding="utf-8-sig") as fh:
             w = csv.writer(fh)
             w.writerow(["plate_id", "well", "cell_line", "reagent", "conc_ug_ml", "role", "point"])
             for x in sorted(wells, key=lambda x: (x.plate_id, x.row, x.col)):
@@ -62,6 +66,20 @@ def main(argv=None) -> int:
 EXTS = {".xls", ".xlsx", ".csv", ".txt", ".tsv"}
 
 
+def _is_results_workbook(f: Path) -> bool:
+    """True for a qFACS results workbook (Summary + Fits sheets), so a re-run does not read old results as data."""
+    if f.suffix.lower() != ".xlsx":
+        return False
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(f, read_only=True)
+        names = set(wb.sheetnames)
+        wb.close()
+        return {"Summary", "Fits"} <= names
+    except Exception:
+        return False
+
+
 def _analyze(a) -> int:
     from .analysis import analyze
     from .report import write_results
@@ -70,8 +88,9 @@ def _analyze(a) -> int:
         p = Path(d)
         files += sorted(x for x in p.iterdir() if x.suffix.lower() in EXTS and not x.name.startswith("~$")) if p.is_dir() else [p]
     beads = [str(Path(b)) for b in a.beads] + [str(f) for f in files if "bead" in f.name.lower()]
-    cells = [str(f) for f in files if str(f) not in beads and f.resolve() != Path(a.setup).resolve()
-             and "qfacs_results" not in f.name.lower()]
+    skip = {Path(a.setup).resolve()} | ({Path(a.out).resolve()} if a.out else set())
+    cells = [str(f) for f in files if str(f) not in beads and f.resolve() not in skip
+             and "qfacs_results" not in f.name.lower() and not _is_results_workbook(f)]
     setup, parse_issues = read_setup(a.setup)
     gate_notes = []
     for d in a.data:

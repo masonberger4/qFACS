@@ -117,6 +117,66 @@ def gate_workspace(wsp_path, fcs_dir, pe_param, live_gate=None):
     return tables, notes
 
 
+def wsp_gate_names(wsp_path):
+    """Names of every gate (Population) in a FlowJo workspace, read from its XML."""
+    text = Path(wsp_path).read_text(encoding="utf-8", errors="ignore")
+    return set(re.findall(r'<Population\b[^>]*\bname="([^"]*)"', text))
+
+
+def is_bead_workspace(wsp_path):
+    """True when the workspace holds the four Quantibrite bead gates (Low, Med Low, Med High, High)."""
+    names = {n.strip().lower() for n in wsp_gate_names(wsp_path)}
+    return all(g.lower() in names for g in BEAD_GATES)
+
+
+def gate_bead_workspace(wsp_path, fcs_dir, pe_param):
+    """Apply hand-drawn bead gates (Low, Med Low, Med High, High) from a workspace.
+
+    Returns ({sample stem: StatsTable}, notes), one table per bead .fcs, in FlowJo bead export layout.
+    """
+    _quiet()
+    fk = _fk()
+    notes = []
+    wsp = fk.Workspace(str(wsp_path), fcs_samples=str(fcs_dir))
+    sids = wsp.get_sample_ids()
+    if not sids:
+        raise ValueError(f"{Path(wsp_path).name}: none of its samples were found in {fcs_dir}")
+    tables = {}
+    for sid in sorted(sids):
+        try:
+            wsp.analyze_samples(sample_id=sid, use_mp=False)
+        except Exception as e:
+            notes.append(f"{sid}: bead gating failed ({e}); skipped")
+            continue
+        sample = wsp.get_sample(sid)
+        if pe_param not in sample.pnn_labels:
+            raise ValueError(f"{sample.original_filename}: no parameter '{pe_param}'")
+        gates = {g.lower(): (g, p) for g, p in wsp.get_gate_ids(sid)}
+        if not all(g.lower() in gates for g in BEAD_GATES):
+            notes.append(f"{sid}: not all bead gates ({', '.join(BEAD_GATES)}) are drawn; skipped")
+            continue
+        try:
+            tr = wsp.get_transform(sid, pe_param)
+        except Exception:
+            tr = None
+        tr = tr or biex()
+        pe = sample.get_events(source="raw")[:, sample.pnn_labels.index(pe_param)]
+        headers, row = [], {}
+        for g in BEAD_GATES:
+            gname, gpath = gates[g.lower()]
+            path = "/".join(list(gpath[1:]) + [gname])
+            mem = wsp.get_gate_membership(sid, gname, gate_path=gpath)
+            headers += [f"{path} | Count", f"{path} | Geometric Mean ({pe_param})"]
+            row[headers[-2]] = int(mem.sum())
+            row[headers[-1]] = flowjo_gmean(pe[mem], tr)
+        stem = Path(str(sample.original_filename or sid)).stem
+        t = StatsTable(str(wsp_path), headers)
+        t.rows[stem] = row
+        tables[stem] = t
+        notes.append(f"{Path(wsp_path).name}: bead gates from the workspace applied to {stem}")
+    return tables, notes
+
+
 def gate_beads(fcs_path, pe_param, transform=None):
     """Find the 4 Quantibrite peaks on log PE. Returns (StatsTable, notes)."""
     _quiet()
@@ -246,6 +306,18 @@ def gate_folder(folder, setup, out_dir=None):
     used = set()
     for wsp in sorted(folder.rglob("*.wsp")):
         dirs = sorted({p.parent for p in fcs})
+        if is_bead_workspace(wsp):
+            # a bead tube workspace: use its hand-drawn Low / Med Low / Med High / High gates
+            for d in dirs:
+                try:
+                    tables, n = gate_bead_workspace(wsp, d, pe)
+                except ValueError:
+                    continue
+                notes += n
+                for stem, t in tables.items():
+                    beads.append(write_table(t, out_dir / f"{stem}.xlsx"))
+                    used |= {p for p in d.glob("*.fcs") if p.stem == stem}
+            continue
         for d in dirs:
             try:
                 tables, n = gate_workspace(wsp, d, pe, live)
