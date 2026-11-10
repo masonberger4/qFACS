@@ -75,3 +75,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v69 | 2026-11-10 06:08:31Z | dreamer | proposals/dreamer__decisions.md | proposal | dream 2026-11-10 decisions | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 0055534835 -> 5fc26cd9e2 |
 | v70 | 2026-11-10 06:08:32Z | dreamer | proposals/dreamer__INDEX.md | proposal | dream 2026-11-10 INDEX | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | ABSENT -> fef25ae655 |
 | v71 | 2026-11-10 06:08:58Z | dreamer | proposals/dreamer__dream_2026-11-10.md | proposal | daily dream report 2026-11-10 | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | ABSENT -> 3d35e1a153 |
+| v72 | 2026-11-10 18:34:24Z | Finish qFACS setup template from run | proposals/finish-qfacs-setup-template-from-run__decisions.md | proposal | Mase decision: manual gating in FlowJo, automate export | cmsg_01Y3oxsYABfATcqbm4kp4uVBNqCEKoVU5r6p9HjZdgcPjZ | ABSENT -> 2fcf868255 |
