@@ -1,0 +1,5 @@
+# Check auto gating on Plate 4 (2026-11-10)
+- Code: qFACS 59b5cfc (PR #9 head, includes PR #8). Data: Plate_004.zip (96 .fcs, plateid Plate_004), 02-Nov-2026 4.wsp (groups Kasumi 2 = rows A-D, CORL279 = rows E-H; Cells > Single Cells > Live, Live = polygon V6 vs SSC). Beads: Plate 1 FlowJo bead export (no bead .fcs in zip). Antibody order per row ASSUMED same as Plate 1.
+- CORL279: auto picks the wrong population. Log FSC-A is bimodal (peaks ~5.75 and ~6.6); Mase's Cells gate takes the SMALL peak (FSC 0.2-3M), auto debris cut (FSC > 1.72M) throws it away and keeps the large peak (likely aggregates). Live counts match by chance (1.00x) but only ~4% of events overlap; gMFI +124% median; antigens/cell CD58 533 -> 6,447, B7H3 823 -> 9,945 (12x).
+- Kasumi 2: V6 is one bright peak (~1.3e5); Mase's Live cuts its upper tail (~17% of singlets out), auto keeps 99.7% (cut ~3.4e5). Auto Cells also drops small-FSC cells Mase kept. Live counts 1.09x, gMFI +24% (same transform), CD58 +12% (69,415 vs 77,951); B7H3 ND both; DLL3 512 (poor fit) vs ND.
+- Files: /mnt/project-files/results/autogate_check_plate4_2026-11-10/
