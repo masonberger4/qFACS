@@ -1,4 +1,4 @@
-<!-- proposal by dreamer at 2026-11-10 06:08:28Z; target: threads.md; reason: dream 2026-11-10 threads; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: open -->
+<!-- proposal by dreamer at 2026-11-10 06:08:28Z; target: threads.md; reason: dream 2026-11-10 threads; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: merged v75 (T1, states updated) -->
 [T1 MED] Replaces open T1 (2026-11-06). Rows:
 | Review prior qFACS workbook work | main build thread: Excel v1 review, build plan, phases 1-3 | done (resolved 2026-11-10) | PRs #1-#3, #5 | REVIEW at prior_work/REVIEW_excel_v1.md |
 | Finish qFACS setup template from run | owns setup template + auto gating code; CHO-EGFR run | blocked: gating-strategy decision + Plate 2 layout/MCF7 V5 Qs (2026-11-10) | PRs #7-#10 merged | 2026-11-09 |
