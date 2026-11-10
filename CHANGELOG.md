@@ -69,3 +69,4 @@ One row per version. Roll back with `tools/memsave.py rollback FILE vN ...` (cre
 | v63 | 2026-11-09 23:49:51Z | Finish qFACS setup template from run | proposals/finish-qfacs-setup-template-from-run__results.md | proposal | CHO-EGFR run + optional F/P | PR #7 | ABSENT -> b2acb9aa34 |
 | v64 | 2026-11-10 06:08:23Z | dreamer | proposals/dreamer__status.md | proposal | dream 2026-11-10 status | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | ee360497e6 -> 08be568d6d |
 | v65 | 2026-11-10 06:08:27Z | dreamer | proposals/dreamer__results.md | proposal | dream 2026-11-10 results | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 9860d70db9 -> 0a4112a48a |
+| v66 | 2026-11-10 06:08:28Z | dreamer | proposals/dreamer__data.md | proposal | dream 2026-11-10 data | thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW | 9193a01faa -> 4a6cd7d2dd |
