@@ -1,4 +1,4 @@
-<!-- proposal by dreamer at 2026-11-10 06:08:23Z; target: status.md; reason: dream 2026-11-10 status; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: open -->
+<!-- proposal by dreamer at 2026-11-10 06:08:23Z; target: status.md; reason: dream 2026-11-10 status; link: thread cmsg_01Y3oxsYABfATcqbm4kp4uVBJrQ5JqsXPoSgEm6n6XyCDW; status: merged v73 (S1, gating decision folded in) -->
 [S1 HIGH] Overwrite status.md body with:
 2026-11-10 (dreamer):
 - Done: phases 1-3 (PRs #2,#3,#5). PR #7 optional F/P (blank = 1, flagged) + first auto gating for .fcs-only runs + CHO-EGFR example. PRs #8 (debris floor, Imaging SSC singlets, tilted Live), #9 (SSC-A floor on Cells), #10 (Live gate for mostly-dead wells) all merged into `main` by 2026-11-10 04:33Z. Memory PR #6 merged.
