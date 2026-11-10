@@ -58,7 +58,8 @@ def _summary(ws, res: Results):
     exp = res.setup.experiment
     ws["A1"] = f"Antigens per cell: {exp.get('experiment_id') or ''}"
     ws["A1"].font = TITLE_FONT
-    ws["A2"] = ("Antigens/cell = one-site fit Bmax × valency (3 significant figures). ND = no specific binding above isotype. "
+    ws["A2"] = ("Antigens/cell = fitted Bmax × valency (3 significant figures). Isotype model: one-site fit after isotype "
+                "subtraction; NS model: total-binding fit Bmax·C/(Kd+C) + NS·C (see Fits). ND = no specific binding. "
                 "Flags are QC notes; no values were excluded.")
     ws["A2"].font = Font(italic=True, color="808080")
     r = 3
@@ -120,12 +121,25 @@ def _fits(ws, res: Results):
     cols = ["Cell line", "Antibody", "Target", "Clone", "Catalog #", "Lot #", "F/P", "Valency", "Plates", "n points",
             "Antigens/cell", "Bmax (ABC)", "Bmax 95% CI low", "Bmax 95% CI high", "Kd (µg/mL)", "Kd 95% CI low",
             "Kd 95% CI high", "Kd (nM)", "R²", "Top conc (µg/mL)", "Top conc / Kd", "Specific ABC at top conc",
-            "Saturation", "Status", "Flags"]
-    _hdr(ws, 1, cols, [12, 11, 14, 10, 12, 10, 7, 8, 9, 7, 12, 12, 12, 12, 10, 10, 10, 9, 8, 10, 9, 12, 30, 10, 60])
+            "Saturation", "Status", "Flags", "Fit model", "NS (ABC per µg/mL)", "NS 95% CI low", "NS 95% CI high",
+            "Non-specific ABC at top conc", "Non-specific share at top conc", "Cross-check model",
+            "Cross-check antigens/cell", "Cross-check Kd (µg/mL)", "Cross-check / main"]
+    _hdr(ws, 1, cols, [12, 11, 14, 10, 12, 10, 7, 8, 9, 7, 12, 12, 12, 12, 10, 10, 10, 9, 8, 10, 9, 12, 30, 10, 60,
+                       9, 11, 11, 11, 12, 11, 10, 12, 10, 10])
+    from openpyxl.comments import Comment
+    ws["W1"].comment = Comment("Specific ABC: isotype-subtracted for the Isotype model; for the NS model, the fitted "
+                               "saturable part Bmax·C/(Kd+C) at the top conc", "qfacs")
+    ws["AG1"].comment = Comment("When isotype data exists: the other model fitted to the same wells (NS model -> isotype "
+                                "method; Isotype model -> NS fit on the unsubtracted ABC). Never both at once.", "qfacs")
     for i, f in enumerate(res.fits, 2):
         g = f.reagent_rec
         fit = f.fit
         nd = f.status == "ND"
+        ns_model = f.model == "NS"
+        top_spec = f.top_specific
+        if ns_model and not nd and fit.bmax is not None and f.top_conc:
+            top_spec = fit.bmax * f.top_conc / (fit.kd + f.top_conc)
+        cr = f.cross
         vals = [f.cell_line, f.reagent, g.get("target"), g.get("clone"), g.get("catalog"), g.get("lot"),
                 g.get("fp_ratio") or ("1 (assumed)" if g.get("is_isotype") != "Y" else None),
                 g.get("valency") or 1, ", ".join(f.plates), len(f.points),
@@ -133,8 +147,14 @@ def _fits(ws, res: Results):
                 None if nd or not fit.bmax_ci else fit.bmax_ci[0], None if nd or not fit.bmax_ci else fit.bmax_ci[1],
                 None if nd else fit.kd, None if nd or not fit.kd_ci else fit.kd_ci[0],
                 None if nd or not fit.kd_ci else fit.kd_ci[1], None if nd else f.kd_nm, None if nd else fit.r2,
-                f.top_conc, None if nd or not fit.kd else f.top_conc / fit.kd, f.top_specific, f.saturation, f.status,
-                _flagtext(f.flags)]
+                f.top_conc, None if nd or not fit.kd else f.top_conc / fit.kd, top_spec, f.saturation, f.status,
+                _flagtext(f.flags), f.model,
+                fit.ns if ns_model else None, fit.ns_ci[0] if ns_model and fit.ns_ci else None,
+                fit.ns_ci[1] if ns_model and fit.ns_ci else None, f.ns_top, f.ns_share_top,
+                cr.model if cr else None,
+                ("ND" if cr.nd else sig3(f.cross_antigens)) if cr else None,
+                cr.kd if cr and not cr.nd else None,
+                f.cross_antigens / f.antigens if f.cross_antigens and f.antigens else None]
         for j, v in enumerate(vals, 1):
             c = ws.cell(i, j, v)
             c.border = BOX
@@ -146,6 +166,12 @@ def _fits(ws, res: Results):
                 c.number_format = "0.000"
             elif j == 19:
                 c.number_format = "0.0000"
+            elif j in (27, 28, 29, 30, 33):
+                c.number_format = "#,##0"
+            elif j in (31, 35):
+                c.number_format = "0%"
+            elif j == 34:
+                c.number_format = "0.000"
     ws.freeze_panes = "C2"
 
 
@@ -154,6 +180,7 @@ def _wells(ws, res: Results):
     PE gMFI (input) -> PE/cell (bead curve on the Beads sheet) -> net of the no-antibody well -> / F/P = ABC ->
     minus the isotype at the same concentration = Specific ABC."""
     from .analysis import antibody_fp
+    from .schema import fit_model_of
     cols = ["Plate", "Well", "Cell line", "Reagent", "Conc (µg/mL)", "Role", "Point", "Sample", "Source file",
             "Live events", "PE gMFI", "PE/cell", "No-antibody PE/cell", "ABC", "Isotype ABC", "Specific ABC", "Flags",
             "Net PE/cell", "F/P used", "F/P used for isotype"]
@@ -163,7 +190,8 @@ def _wells(ws, res: Results):
              "N": "= Net PE/cell ÷ F/P used",
              "O": "= isotype Net PE/cell at the same concentration (interpolated on log10 conc when the "
                   "concentrations differ) ÷ F/P used for isotype",
-             "P": "= ABC − Isotype ABC",
+             "P": "= ABC − Isotype ABC (Isotype model); = ABC for NS-model antibodies, whose fit includes "
+                  "non-specific binding (an isotype, if run, is shown for the cross-check only)",
              "R": "= PE/cell − No-antibody PE/cell",
              "S": "Input: F/P of the reagent from the setup workbook (1 when left blank)",
              "T": "Input: the isotype's F/P, or the antibody's F/P when the isotype's is blank"}
@@ -216,6 +244,7 @@ def _wells(ws, res: Results):
         w = r.well
         reag = setup.reagent(w.reagent) if w.reagent else None
         is_iso = bool(reag) and reag.get("is_isotype") == "Y"
+        ns_model = bool(reag) and not is_iso and fit_model_of(reag, setup.experiment) == "NS"
         b = bead_row.get(plate_run.get(w.plate_id))
         pe = f"=10^((LOG10(K{i})-Beads!$K${b})/Beads!$J${b})" if r.pe is not None and b else r.pe
         blank = net = abc = iso_abc = spec = fp = iso_fp = None
@@ -229,7 +258,7 @@ def _wells(ws, res: Results):
             if not is_iso and r.iso_abc is not None:
                 iso_fp = setup.reagent(reag.get("matched_isotype")).get("fp_ratio") or fp
                 iso_abc = f"={iso_formula(r, i)}/T{i}"
-                spec = f"=N{i}-O{i}"
+                spec = f"=N{i}" if ns_model else f"=N{i}-O{i}"
             elif not is_iso and r.specific is not None:
                 spec = f"=N{i}"                               # no isotype to subtract (flagged)
         vals = [w.plate_id, w.well, w.cell_line, w.reagent or "", w.conc_ug_ml, w.role, w.point, r.sample, r.source,
@@ -269,7 +298,8 @@ def _plots(wb, res: Results):
         return
     data = wb.create_sheet("Plot_Data")
     ws = wb.create_sheet("Plots", 1)
-    ws["A1"] = "Specific ABC vs antibody concentration, with the one-site fit (log concentration axis)"
+    ws["A1"] = ("Specific ABC vs antibody concentration, with the one-site fit (log concentration axis). "
+                "NS-model antibodies: total ABC with the Bmax·C/(Kd+C) + NS·C fit.")
     ws["A1"].font = TITLE_FONT
     for i, f in enumerate(res.fits):
         c0 = 1 + 4 * i
@@ -286,11 +316,11 @@ def _plots(wb, res: Results):
             for k in range(40):
                 x = 10 ** (lo + (hi - lo) * k / 39)
                 data.cell(3 + k, c0 + 2, x)
-                data.cell(3 + k, c0 + 3, f.fit.bmax * x / (f.fit.kd + x))
+                data.cell(3 + k, c0 + 3, f.fit.predict(x))
             n_fit = 40
         ch = ScatterChart()
-        ch.title = f"{f.cell_line} · {f.reagent}" + (" (ND)" if f.status == "ND" else "")
-        ch.x_axis.title, ch.y_axis.title = "µg/mL", "Specific ABC"
+        ch.title = f"{f.cell_line} · {f.reagent}" + (" (NS fit)" if f.model == "NS" else "") + (" (ND)" if f.status == "ND" else "")
+        ch.x_axis.title, ch.y_axis.title = "µg/mL", "ABC (total)" if f.model == "NS" else "Specific ABC"
         ch.x_axis.scaling.logBase = 10
         ch.x_axis.delete = ch.y_axis.delete = False
         n = len(f.points)

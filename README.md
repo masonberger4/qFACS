@@ -66,6 +66,19 @@ Method:
 3. Isotype ABC of the matched isotype on the same cell line, interpolated on log concentration; specific ABC = ABC - isotype ABC.
 4. One-site fit per cell line x antibody (replicate plates pooled): specific ABC = Bmax x C / (Kd + C), 95 % CIs.
    Antigens/cell = Bmax x valency (blank valency = 1).
+
+Fit model (Reagents "Fit model", or the Experiment default; blank = Isotype):
+- Isotype (default): steps 3-4 above.
+- NS: no isotype subtraction. Total-binding fit ABC = Bmax x C / (Kd + C) + NS x C, with Bmax, Kd, NS >= 0
+  (the model of BD's QuantiBRITE ABC calculator); NS x C is the non-specific signal. No isotype wells are needed,
+  but the top doses must run well past saturation (ideally >= 10x Kd, several points on the plateau) so the
+  plateau and the slow linear rise can be told apart. Never both: subtracting the isotype and fitting NS would
+  remove the background twice.
+- Cross-check: whenever the matched isotype was run, the other model is fitted to the same wells and reported
+  next to the main result on Fits (NS model: the isotype-method antigens/cell; Isotype model: the NS fit).
+- NS flags: Kd below the lowest or above the top dose, non-specific > 50 % of the top-dose signal, wide Bmax CI
+  (SE > 25 %), and NS vs isotype-method antigens/cell differing by > 25 %. Fits also lists NS with its 95 % CI,
+  the non-specific ABC at the top conc and its share of the signal.
 5. Flags (nothing is excluded): not saturated (top conc < k x Kd), poor fit, imprecise Bmax, ND, isotype mismatch or
    missing, low live events, missing data, signal above the High bead (note), bead QC.
 
