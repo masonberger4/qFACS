@@ -7,12 +7,14 @@ pooled) and the same gates are applied to every well:
   about its centre, above a debris cut at the valley below the main log FSC-A peak (never below 35% of the FSC-A mode).
 - Single Cells: SSC-W below its main peak + 3 x the peak's narrow-side width, and at least 1.3 x the peak
   (doublets and clumps are wider).
-- Live: viability dye low. Cut = mode + 2.5 x the dim-side width of the main (live) peak, on log10 of the dye.
+- Live: viability dye low. Cut = mode + 2.5 x the dim-side width of the main (live) peak, on log10 of the dye,
+  tilted with SSC like a hand-drawn V6 vs SSC gate (slope of the live peak's log V6 on log SSC, 0-1).
 
 Checked against Mase's hand gates (same PE display transform), PE gMFI per well vs FlowJo gating:
-  CHO-EGFR (05-Nov-2026.wsp, rows A-B):  median 0.5%, 90% of wells within 1.1%, max 1.8%
-  U-87 MG (02-Nov-2026.wsp, rows A-D):   median 2.6%, 90% within 3.9%, max 4.3%
-  A431 (02-Nov-2026.wsp, rows E-H):      median 2.5%, 90% within 6.0%, max 7.6%
+  CHO-EGFR (05-Nov-2026.wsp, rows A-B):  median 0.6%, 90% of wells within 1.3%, max 1.9%
+  U-87 MG (02-Nov-2026.wsp, rows A-D):   median 3.3%, 90% within 4.5%, max 5.1%
+  A431 (02-Nov-2026.wsp, rows E-H):      median 1.5%, 90% within 4.2%, max 5.5%
+Antigens/cell vs the same plates gated by hand: within 4.2% (CHO-EGFR EGFR, U-87 MG and A431 CD58 / B7H3).
 """
 from __future__ import annotations
 
@@ -29,6 +31,7 @@ DEBRIS_LOG = 0.45         # debris floor: 0.45 log below the FSC-A mode (35% of 
 SINGLET_N_SIGMA = 3.0
 SINGLET_MIN_RATIO = 1.3     # never cut singlet width below 1.3 x its peak
 LIVE_N_SIGMA = 2.5
+LIVE_TILT = True
 POOL_PER_WELL = 3000
 
 
@@ -41,6 +44,8 @@ class Gates:
     fsc_min: float = 0.0
     w_max: float = None
     live_cut: float | None = None
+    live_slope: float = 0.0       # Live cut tilts with SSC: V6 < live_cut * (SSC / ssc_ref) ** live_slope
+    ssc_ref: float = 1.0
     n_pooled: int = 0
     notes: list = field(default_factory=list)
 
@@ -50,6 +55,8 @@ class Gates:
              f"Single Cells {c['gate_width']} < {self.w_max:,.0f}")
         if self.live_cut is not None:
             s += f"; Live {c['gate_viability']} < {self.live_cut:,.0f}"
+            if self.live_slope:
+                s += f" x (SSC / {self.ssc_ref:,.0f})^{self.live_slope:.2f}"
         return s + f"; learned from {self.n_pooled:,} pooled events"
 
 
@@ -125,7 +132,17 @@ def learn(arrays, channels, use_live=True) -> Gates:
     # Live
     if use_live:
         sing = cells & (pool[:, 2] <= g.w_max)
-        g.live_cut = _peak_cut(pool[sing, 3], LIVE_N_SIGMA, log=True)
+        v6 = np.log10(np.clip(pool[sing, 3], 100, None))
+        sc = np.log10(np.clip(pool[sing, 1], 1e3, None))
+        g.ssc_ref = float(10 ** np.median(sc))
+        if LIVE_TILT:
+            # slope of the live peak's V6 vs SSC (bigger, more granular cells carry more dye-channel signal)
+            lo, hi = np.percentile(v6, [10, 70])
+            core = (v6 > lo) & (v6 < hi)
+            b = np.polyfit(sc[core], v6[core], 1)[0]
+            g.live_slope = float(np.clip(b, 0.0, 1.0))
+        resid = 10 ** (v6 - g.live_slope * (sc - np.log10(g.ssc_ref)))
+        g.live_cut = _peak_cut(resid, LIVE_N_SIGMA, log=True)
     return g
 
 
@@ -145,5 +162,6 @@ def apply(g: Gates, arr):
     m = _cells(g, arr)
     m[m] = _singlets(g, arr[m, 1], arr[m, 2])
     if g.live_cut is not None:
-        m &= arr[:, 3] < g.live_cut
+        ssc = np.clip(arr[:, 1], 1e3, None)
+        m &= arr[:, 3] < g.live_cut * (ssc / g.ssc_ref) ** g.live_slope
     return m
