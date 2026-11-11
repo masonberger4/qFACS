@@ -25,6 +25,8 @@ README_LINES = [
     ("Experiment: IDs, PE parameter, live gate name, QC thresholds.", None),
     ("Beads: one row per Quantibrite PE tube acquired, with the lot's PE molecules per bead.", None),
     ("Reagents: every PE antibody and isotype with F/P, valency, host and isotype (all lot specific).", None),
+    ("   Fit model per antibody: Isotype (default; subtract the matched isotype) or NS (fit non-specific binding, "
+     "no isotype wells needed; run top doses well past saturation).", None),
     ("Cell_Lines: the lines tested, and any fluorescent reporter they carry.", None),
     ("Plates: plate IDs and which bead run calibrates each plate.", None),
     ("Layout: one line per plate row: cell line, reagent, top concentration, dilution, columns used.", None),

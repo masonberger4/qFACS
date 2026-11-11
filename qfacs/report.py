@@ -44,6 +44,7 @@ def _flagtext(flags):
 def write_results(res: Results, path):
     wb = Workbook()
     _summary(wb.active, res)
+    _method(wb.create_sheet("Method"), res)
     _fits(wb.create_sheet("Fits"), res)
     _wells(wb.create_sheet("Wells"), res)
     _beads(wb.create_sheet("Beads"), res)
@@ -115,6 +116,81 @@ def _summary(ws, res: Results):
     for j in range(na + 4, 2 * na + 4):
         ws.column_dimensions[get_column_letter(j)].width = 36
     ws.cell(last + 2, 1, f"qfacs {__version__}, {dt.datetime.now():%Y-%m-%d %H:%M}, setup: {res.setup.source}").font = Font(color="808080")
+
+
+def _method(ws, res: Results):
+    """Plain-language description of every calculation step, pointing to the sheet and columns that hold it."""
+    from .analysis import CROSS_TOL, NS_SHARE_MAX
+    from .schema import fit_model_of
+    st = res.settings
+    exp = res.setup.experiment
+    abs_ = [r for r in res.setup.reagents if r.get("is_isotype") != "Y" and r.get("name")]
+    ns = [r["name"] for r in abs_ if fit_model_of(r, exp) == "NS"]
+    iso = [r["name"] for r in abs_ if fit_model_of(r, exp) != "NS"]
+    H = Font(bold=True, size=12, color="1F3864")
+    lines = [
+        ("How antigens per cell are calculated", TITLE_FONT),
+        ("Each step names the sheet and columns where its numbers are. Nothing is excluded automatically: QC problems "
+         "become flags.", None),
+        ("", None),
+        ("1. Bead curve (Beads sheet)", H),
+        ("The four Quantibrite PE bead peaks (gMFI, column E) are matched to the lot's PE molecules per bead (column D).", None),
+        ("A straight line is fitted on log scales: log10(gMFI) = slope × log10(PE/bead) + intercept (columns J, K).", None),
+        (f"QC: R² (column L) must be at least {st['bead_r2_min']:g}, and each bead must back-calculate to 80-120 % of its "
+         "lot value (column I). Otherwise every result on that plate is flagged.", None),
+        ("", None),
+        ("2. PE molecules per cell (Wells sheet)", H),
+        ("PE gMFI of the live gate (column K) is converted with the bead curve: PE/cell = 10^((log10 gMFI − intercept) / "
+         "slope) (column L).", None),
+        (f"Wells with fewer than {st['min_live_events']:g} live events (column J) are flagged; gMFI outside the bead range "
+         "is flagged as extrapolated.", None),
+        ("", None),
+        ("3. Background (Wells sheet)", H),
+        ("The no-antibody wells (cells + buffer) of the same plate row are averaged (column M) and subtracted: "
+         "Net PE/cell = PE/cell − no-antibody PE/cell (column R). This removes autofluorescence.", None),
+        ("", None),
+        ("4. Antibodies bound per cell, ABC (Wells sheet)", H),
+        ("ABC = Net PE/cell ÷ F/P (column N), where F/P = PE molecules per antibody from the Reagents sheet (column S). "
+         "A blank F/P is taken as 1 and flagged.", None),
+        ("", None),
+        ("5. Non-specific binding: one of two fit models per antibody (Fits sheet, column Fit model)", H),
+        ("Isotype model" + (f" (used for: {', '.join(iso)})" if iso else " (not used in this experiment)") + ":", Font(bold=True)),
+        ("   The matched isotype's ABC at the same concentration (column O; interpolated on log concentration when "
+         "concentrations differ) is subtracted: Specific ABC = ABC − isotype ABC (column P).", None),
+        ("   Then the one-site fit: Specific ABC = Bmax × C / (Kd + C).", None),
+        ("NS model" + (f" (used for: {', '.join(ns)})" if ns else " (not used in this experiment)") + ":", Font(bold=True)),
+        ("   No isotype is subtracted (column P = ABC). Total binding is fitted instead: "
+         "ABC = Bmax × C / (Kd + C) + NS × C, with Bmax, Kd and NS all ≥ 0.", None),
+        ("   NS × C is the non-specific signal, which rises linearly with antibody concentration. This needs top doses "
+         "well past saturation (ideally ≥ 10 × Kd).", None),
+        ("The two are never combined: subtracting the isotype and also fitting NS would remove the background twice.", None),
+        ("Cross-check: when the matched isotype was run, the other model is fitted to the same wells and shown on Fits "
+         "(columns Cross-check ...).", None),
+        ("", None),
+        ("6. Fit and antigens per cell (Fits sheet)", H),
+        ("Points from replicate plates are pooled per cell line × antibody. The fit is least squares; for a given Kd the "
+         "best Bmax (and NS) is exact, so only Kd is searched.", None),
+        ("Antigens/cell = Bmax × valency (column K; blank valency = 1, so antigens/cell = ABC). Kd in nM uses the MW "
+         "(blank = 150 kDa).", None),
+        ("95 % confidence intervals come from the fit's standard errors (columns M, N and P, Q; NS CI in the NS columns).", None),
+        ("", None),
+        ("7. Flags (Summary and Fits sheets)", H),
+        (f"Not saturated: top conc below {st['saturation_k']:g} × Kd, so Bmax is extrapolated. Poor fit: R² < 0.9. "
+         "Imprecise Bmax: SE > 25 % of Bmax.", None),
+        ("ND: no specific binding (Bmax ≤ 0 or its CI reaches 0).", None),
+        (f"NS model only: Kd below the lowest or above the top dose; non-specific > {NS_SHARE_MAX:.0%} of the top-dose "
+         f"signal; NS and isotype-method results differ by > {CROSS_TOL:.0%}.", None),
+        ("Also flagged: missing or mismatched isotype, F/P assumed 1, low events, missing wells, bead QC, top dose above the "
+         "High bead.", None),
+        ("", None),
+        ("Setup and data problems are listed on the Issues sheet.", Font(italic=True, color="808080")),
+    ]
+    for i, (text, font) in enumerate(lines, 1):
+        c = ws.cell(i, 1, text)
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+        if font:
+            c.font = font
+    ws.column_dimensions["A"].width = 130
 
 
 def _fits(ws, res: Results):

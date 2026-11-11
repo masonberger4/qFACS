@@ -99,7 +99,9 @@ def test_cli_end_to_end(tmp_path):
     assert rc == 0 and out.exists()
     from openpyxl import load_workbook
     wb = load_workbook(out)
-    assert wb.sheetnames[:3] == ["Summary", "Plots", "Fits"]
+    assert wb.sheetnames[:4] == ["Summary", "Plots", "Method", "Fits"]
+    method = " ".join(str(c.value) for c in wb["Method"]["A"] if c.value)
+    assert "Bead curve" in method and "Isotype model (used for:" in method and "NS model (not used" in method
     fits = {(r[0], r[1]): r for r in wb["Fits"].iter_rows(min_row=2, values_only=True)}
     assert fits[("A431", "DLL3")][10] == "ND"
     assert fits[("U-87 MG", "CD58")][10] == pytest.approx(43164, rel=0.01)  # F/P 1.24, isotype F/P blank
