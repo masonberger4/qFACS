@@ -31,7 +31,8 @@ from qfacs.template import write_setup  # noqa: E402
 
 def run(set_id, lab_xlsx, out_dir, bead_export):
     out_dir = Path(out_dir)
-    exports = sorted((out_dir / "cell_line_exports").glob("Plate*.xls"))
+    with_counts = out_dir / "cell_line_exports_with_counts"      # same exports plus the Live Count column (low-events QC)
+    exports = sorted((with_counts if with_counts.is_dir() else out_dir / "cell_line_exports").glob("Plate*.xls"))
     bead_file = out_dir / Path(bead_export).name
     if Path(bead_export).resolve() != bead_file.resolve():
         shutil.copy(bead_export, bead_file)

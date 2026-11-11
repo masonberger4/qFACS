@@ -14,7 +14,12 @@ and one FlowJo-style export per cell line (layout of `Plate1 A549.xls`).
 # per cell line exports (Cells > Single Cells > Live from the workspace, gMFI the FlowJo way)
 python gate_export.py "02-Nov-2026.wsp" Plate_001/ OUT/Set2/cell_line_exports Plate1
 python set1_exports.py Exp2290_Analysis.xlsx Exp2290_qFACS_Setup.xlsx OUT/Set1/cell_line_exports
-# both methods + workbooks
+# exact-layout replicas of Mase's own files for a set gated from .fcs + .wsp: 'PlateN <line>.xls' with FlowJo's
+# five columns (no Count, no column widths) and his Exp2290_Analysis.xlsx itself refilled (edited at the XML level so
+# his styles, charts, picture and hidden sheets stay); the with-Count exports go to cell_line_exports_with_counts
+python replicas.py Set2 Exp2290_qFACS_Setup2.xlsx Exp2290_Analysis.xlsx OUT/Set2 --beads 1661 16383 72239 197572 \
+    --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" Plate_001/ --plate 2 "02-Nov-2026 2.wsp" Plate_002/
+# both methods + workbooks (reads cell_line_exports_with_counts when it exists)
 python run_set.py Set2 Exp2290_qFACS_Setup2.xlsx OUT/Set2 "Quantbrite PE Beads.xls"
 # check abc_calc.py against the calculator's solved tabs
 python abc_calc.py QuantiBRITE_ABC_calculator.xlsx

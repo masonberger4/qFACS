@@ -78,10 +78,11 @@ def write_xls(rows, paths, path, pe=PE, with_count=True):
     wb = xlwt.Workbook()
     ws = wb.add_sheet("Sheet0")
     head = [""] + [f"{p} | Freq. of Parent" for p in paths] + [f"{paths[-1]} | Geometric Mean ({pe})"]
-    has_count = with_count and any(r.get("count") is not None for r in rows)
+    has_count = with_count and any(r.get("count") is not None for r in rows)   # the FlowJo original has no Count column
     if has_count:
         head.append(f"{paths[-1]} | Count")
-    for c, h in enumerate(head):
+    ws.row(0).set_cell_text(0, "")          # FlowJo writes an empty text cell in A1, not a blank
+    for c, h in enumerate(head[1:], 1):
         ws.write(0, c, h)
     for i, r in enumerate(rows, 1):
         ws.write(i, 0, r["sample"])
@@ -107,9 +108,10 @@ def write_xls(rows, paths, path, pe=PE, with_count=True):
         if has_count:
             cts = [r["count"] for r in rows if r.get("count") is not None]
             ws.write(n + 1 + k, len(paths) + 2, float(round(fn(cts))) if cts else "")
-    ws.col(0).width = 5000
-    for c in range(1, len(head)):
-        ws.col(c).width = 9000
+    if has_count:                           # FlowJo sets no column widths; only widen our own variant
+        ws.col(0).width = 5000
+        for c in range(1, len(head)):
+            ws.col(c).width = 9000
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(path))
     return str(path)
