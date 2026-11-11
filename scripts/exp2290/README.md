@@ -21,6 +21,9 @@ python replicas.py Set2 Exp2290_qFACS_Setup2.xlsx Exp2290_Analysis.xlsx OUT/Set2
     --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" Plate_001/ --plate 2 "02-Nov-2026 2.wsp" Plate_002/
 # both methods + workbooks (reads cell_line_exports_with_counts when it exists)
 python run_set.py Set2 Exp2290_qFACS_Setup2.xlsx OUT/Set2 "Quantbrite PE Beads.xls"
+# one QuantiBRITE_ABC_calculator.xlsx per cell line (Mase's workbook refilled: beads, unstained-subtracted Live gMFI,
+# F/P and the solved Bmax, Kd, NS; tabs for antibodies not run on the line are removed) -> OUT/Set2/abc_calculator/
+python calc_books.py Set2 Exp2290_qFACS_Setup2.xlsx OUT/Set2 "Quantbrite PE Beads.xls" QuantiBRITE_ABC_calculator.xlsx
 # check abc_calc.py against the calculator's solved tabs
 python abc_calc.py QuantiBRITE_ABC_calculator.xlsx
 ```
