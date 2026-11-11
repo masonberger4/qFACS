@@ -159,3 +159,15 @@ def test_report_has_ns_columns(tmp_path):
     ws = wb["Wells"]
     i = next(k for k, w in enumerate(res.wells, 2) if w.well.reagent == "CD58" and w.abc is not None)
     assert ws[f"P{i}"].value == f"=N{i}"
+
+
+def test_method_sheet_names_ns_antibodies(tmp_path):
+    from openpyxl import load_workbook
+    from qfacs.report import write_results
+    s = v1_setup()
+    s.reagent("CD58")["fit_model"] = "NS"
+    res = analyze(s, [str(DATA / "Plate1 H1975.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
+    out = tmp_path / "r.xlsx"
+    write_results(res, out)
+    text = " ".join(str(c.value) for c in load_workbook(out)["Method"]["A"] if c.value)
+    assert "NS model (used for: CD58)" in text and "Isotype model (used for: B7H3, DLL3)" in text
