@@ -56,7 +56,8 @@ Inputs are FlowJo table exports (.xls, .xlsx, .csv or .txt), one row per sample 
   A file belongs to the plate whose Plate ID starts its name (`Plate1_A431.xls` -> Plate1).
 - a bead export (name contains "bead") with gates named Low, Med Low, Med High and High.
 
-The results workbook has Summary (cell line x antibody antigens/cell and flags), Plots, Fits, Wells, Beads and Issues.
+The results workbook has Summary (cell line x antibody antigens/cell and flags), Plots, Method (each calculation step in
+plain language, with the sheet and columns that hold it), Fits, Wells, Beads and Issues.
 On Wells and Beads the calculated columns are live Excel formulas (bead curve, PE/cell, no-antibody background,
 ABC, isotype ABC, specific ABC), so every value can be traced cell by cell. Bmax and Kd on Fits are fitted values.
 
