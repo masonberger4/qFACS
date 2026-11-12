@@ -63,3 +63,36 @@ def test_is_bead_workspace(tmp_path):
                      '<Population name="Live"/></Workspace>')
     assert is_bead_workspace(beads)
     assert not is_bead_workspace(cells)
+
+
+def test_saved_wsp_values_used_without_fcs(tmp_path):
+    """A .wsp with FlowJo's saved Live Count + PE Geometric Mean is read directly: no .fcs, no re-gating."""
+    from qfacs.wsp_saved import saved_tables
+
+    def sample(sid, well, live, gm):
+        return (f'<Sample><Keywords><Keyword name="$PLATEID" value="Plate_001"/><Keyword name="$WELLID" value="{well}"/>'
+                f'</Keywords><SampleNode name="{well}-Sample_{sid}.fcs" count="3000" sampleID="{sid}"><Subpopulations>'
+                f'<Population name="Cells" count="2000"><Subpopulations><Population name="Single Cells" count="1500">'
+                f'<Subpopulations><Population name="Live" count="{live}"><Subpopulations>'
+                f'<Statistic name="Count" value="{live}"/><Statistic name="Geometric Mean" id="B5 (575)-A" value="{gm}"/>'
+                f'</Subpopulations></Population></Subpopulations></Population></Subpopulations></Population>'
+                f'</Subpopulations></SampleNode></Sample>')
+    beads = ('<Sample><SampleNode name="Tube_001.fcs" count="9000" sampleID="9"><Subpopulations>'
+             '<Population name="Beads" count="8000"><Subpopulations>' + "".join(
+                 f'<Population name="{g}" count="2000"><Subpopulations><Statistic name="Geometric Mean" '
+                 f'id="B5 (575)-A" value="{v}"/></Subpopulations></Population>'
+                 for g, v in (("Low", 1661), ("Med Low", 16383), ("Med High", 72239), ("High", 197572)))
+             + '</Subpopulations></Population></Subpopulations></SampleNode></Sample>')
+    wsp = tmp_path / "plate.wsp"
+    wsp.write_text("<Workspace><SampleList>" + sample(1, "A01", 1200, 5000.5) + sample(2, "A02", 900, 4000.0)
+                   + beads + "</SampleList></Workspace>")
+    cells, bead_t, missing, _ = saved_tables(wsp, "B5 (575)-A", "Live")
+    assert not missing
+    t = cells["Plate_001"]
+    assert t.headers == ["Cells/Single Cells/Live | Count", "Cells/Single Cells/Live | Geometric Mean (B5 (575)-A)"]
+    assert t.rows["A01-Sample_1"] == {t.headers[0]: 1200, t.headers[1]: 5000.5}
+    from qfacs.stats_io import bead_gmfis
+    assert bead_gmfis(bead_t["Tube_001"], "B5 (575)-A")["pe_high"] == 197572
+    # no saved gMFI -> reported as missing
+    wsp.write_text(wsp.read_text().replace('name="Geometric Mean" id="B5 (575)-A" value="4000.0"', 'name="Median"'))
+    assert saved_tables(wsp, "B5 (575)-A", "Live")[2] == ["A02-Sample_2"]
