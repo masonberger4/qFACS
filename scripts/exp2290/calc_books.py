@@ -136,7 +136,8 @@ def write_book(template, out, bead, fits):
 def highest_unstained(export):
     """Largest Live gMFI among the column-12 (no antibody) wells of a per cell line export."""
     sh = xlrd.open_workbook(str(export)).sheet_by_index(0)
-    vals = [sh.cell_value(r, 4) for r in range(1, sh.nrows) if re.match(r"[A-H]12\b", str(sh.cell_value(r, 0)))]
+    col = next(c for c in range(sh.ncols) if "Geometric Mean" in str(sh.cell_value(0, c)))
+    vals = [sh.cell_value(r, col) for r in range(1, sh.nrows) if re.match(r"[A-H]12\b", str(sh.cell_value(r, 0)))]
     assert vals, f"{export}: no column-12 wells"
     return max(vals)
 

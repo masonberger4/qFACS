@@ -1,4 +1,5 @@
-"""Exact-layout replicas of Mase's two hand-made files, for a set gated from .fcs + .wsp:
+"""Exact-layout replicas of Mase's two hand-made files, for a set gated in FlowJo (numbers read from the .wsp,
+FlowJo's own saved gate counts and Live gMFI; see wsp_export.py):
 
   <OUT>/cell_line_exports/Plate<N> <cell line>.xls   same layout as FlowJo's 'Plate1 A549.xls'
                                                      (sample, 3 x Freq. of Parent, Live gMFI, then Mean and SD)
@@ -7,11 +8,11 @@
                                                      'Raw data' and 'Calc Sheet'. Styles, charts, picture, hidden
                                                      sheets and conditional formats are the original's (the workbook
                                                      is edited at the XML level, not rebuilt).
-  <OUT>/cell_line_exports_with_counts/               the same exports plus a Live Count column (for the engine's QC)
+  <OUT>/flowjo_exports/                              the table FlowJo itself exports from the workspace (with Live Count)
 
 Usage:
   python replicas.py Set2 LAB_SETUP.xlsx Exp2290_Analysis.xlsx OUT_DIR --beads 1661 16383 72239 197572 \
-      --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" Plate_001/ [--name "wsp group=cell line"]
+      --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" [--name "wsp group=cell line"]
 """
 from __future__ import annotations
 
@@ -28,8 +29,9 @@ from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gate_export import fj_round, gate_plate, pct, write_xls  # noqa: E402
+from gate_export import fj_round, pct, write_xls  # noqa: E402
 from sets import BEAD_LOT, SETS, read_plate_maps  # noqa: E402
+from wsp_export import wsp_tables  # noqa: E402
 
 from qfacs.stats_io import well_of  # noqa: E402
 
@@ -37,11 +39,11 @@ ISO_LABEL = "IgG1"          # Mase's label for the mIgG1 isotype rows
 
 
 def collect(set_id, lab_xlsx, plates, rename):
-    """Gate every plate. Returns [dict(plate, name, paths, rows)] in Mase's order (plate, then cell line name)."""
+    """Read every plate's workspace. Returns [dict(plate, name, paths, rows)] in Mase's order (plate, then cell line name)."""
     layout = {(x["plate"], x["row"]): x for x in read_plate_maps(lab_xlsx, SETS[set_id]["sheet"])}
     lines = []
-    for plate, wsp, fcs_dir in plates:
-        groups, paths = gate_plate(wsp, fcs_dir)
+    for plate, wsp in plates:
+        groups, paths = wsp_tables(wsp)
         for g, rows in groups.items():
             out = []
             for r in rows:
@@ -231,18 +233,18 @@ def main():
     ap.add_argument("lab_setup")
     ap.add_argument("template", help="Mase's Exp2290_Analysis.xlsx")
     ap.add_argument("out_dir")
-    ap.add_argument("--plate", nargs=3, action="append", metavar=("N", "WSP", "FCS_DIR"), required=True)
+    ap.add_argument("--plate", nargs=2, action="append", metavar=("N", "WSP"), required=True)
     ap.add_argument("--name", action="append", default=[], help='"workspace group=cell line name"')
     ap.add_argument("--beads", nargs=4, type=float, required=True, metavar=("LOW", "MEDLOW", "MEDHIGH", "HIGH"))
     ap.add_argument("--bead-name", required=True)
     a = ap.parse_args()
     out = Path(a.out_dir)
-    lines = collect(a.set_id, a.lab_setup, [(int(p), w, d) for p, w, d in a.plate], dict(x.split("=", 1) for x in a.name))
+    lines = collect(a.set_id, a.lab_setup, [(int(p), w) for p, w in a.plate], dict(x.split("=", 1) for x in a.name))
     for ln in lines:
         rows = [x["raw"] for x in ln["rows"]]          # unrounded, so Mean and SD are FlowJo's (from full precision)
         name = f"Plate{ln['plate']} {ln['name']}.xls"
         write_xls(rows, ln["paths"], out / "cell_line_exports" / name, with_count=False)
-        write_xls(rows, ln["paths"], out / "cell_line_exports_with_counts" / name)
+        write_xls(rows, ln["paths"], out / "flowjo_exports" / name, count_first=True)
         print(f"{name}: {len(rows)} wells, gMFI {min(x['gmfi'] for x in rows):.0f}-{max(x['gmfi'] for x in rows):.0f}")
     book = out / f"Exp2290_Analysis_{a.set_id}.xlsx"
     m, c, r2 = fill_analysis(a.template, book, a.set_id, a.lab_setup, lines, a.beads, a.bead_name)

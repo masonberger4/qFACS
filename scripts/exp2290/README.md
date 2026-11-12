@@ -11,15 +11,18 @@ and one FlowJo-style export per cell line (layout of `Plate1 A549.xls`).
 | Set3 | `Exp2290_qFACS_Setup3.xlsx`, `Plate Maps` | `Kasumi 2 HT55`, `CHO EGFR` .fcs + .wsp (Plate 2 not supplied) |
 
 ```
-# per cell line exports (Cells > Single Cells > Live from the workspace, gMFI the FlowJo way)
-python gate_export.py "02-Nov-2026.wsp" Plate_001/ OUT/Set2/cell_line_exports Plate1
+# FlowJo's own table straight from a workspace: reads the gate counts and Live gMFI FlowJo saved in the .wsp
+# (no .fcs, no re-gating). Matches FlowJo's Table Editor export cell for cell on the three exports Mase supplied.
+python wsp_export.py "02-Nov-2026.wsp" OUT/Set2/flowjo_exports Plate1
+# Set 1 has no workspace: rebuild the exports from the FlowJo table in Exp2290_Analysis.xlsx
 python set1_exports.py Exp2290_Analysis.xlsx Exp2290_qFACS_Setup.xlsx OUT/Set1/cell_line_exports
-# exact-layout replicas of Mase's own files for a set gated from .fcs + .wsp: 'PlateN <line>.xls' with FlowJo's
-# five columns (no Count, no column widths) and his Exp2290_Analysis.xlsx itself refilled (edited at the XML level so
-# his styles, charts, picture and hidden sheets stay); the with-Count exports go to cell_line_exports_with_counts
+# exact-layout replicas of Mase's own files for a set, on the numbers saved in the .wsp: 'PlateN <line>.xls' in the
+# five-column layout of 'Plate1 A549.xls' (cell_line_exports/), FlowJo's six-column table (flowjo_exports/) and his
+# Exp2290_Analysis.xlsx itself refilled (edited at the XML level so his styles, charts, picture and hidden sheets stay)
 python replicas.py Set2 Exp2290_qFACS_Setup2.xlsx Exp2290_Analysis.xlsx OUT/Set2 --beads 1661 16383 72239 197572 \
-    --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" Plate_001/ --plate 2 "02-Nov-2026 2.wsp" Plate_002/
-# both methods + workbooks (reads cell_line_exports_with_counts when it exists)
+    --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" --plate 2 "02-Nov-2026 2.wsp"
+# (gate_export.py re-applies the workspace gates to the .fcs files instead; kept as a cross-check, within about 1 %)
+# both methods + workbooks (reads flowjo_exports when it exists, else cell_line_exports)
 python run_set.py Set2 Exp2290_qFACS_Setup2.xlsx OUT/Set2 "Quantbrite PE Beads.xls"
 # one QuantiBRITE_ABC_calculator.xlsx per cell line (Mase's workbook refilled: beads, unstained-subtracted Live gMFI,
 # F/P and the solved Bmax, Kd, NS; tabs for antibodies not run on the line are removed) -> OUT/Set2/abc_calculator/
