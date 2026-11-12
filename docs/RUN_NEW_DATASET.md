@@ -31,7 +31,6 @@ Yellow cells are inputs, `*` marks required columns, and every column header has
 - **Layout**: one row per plate row: plate, row, cell line, reagent (antibody or isotype), top final conc (µg/mL),
   dilution factor, first column, number of points, no-antibody column(s). This is how every well is tied to its
   cell line, antibody and concentration.
-- **Controls**: optional control wells or tubes.
 
 Check it (fast, no data needed):
 ```

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from qfacs import schema as S
 from qfacs.model import Setup
 from qfacs.setup_io import read_setup
 from qfacs.template import write_setup
@@ -28,7 +29,6 @@ def good_setup() -> Setup:
         dict(plate_id="Plate1", row="B", cell_line="H1975", reagent="mIgG1", top_conc_ug_ml=50, dilution_factor=1.8,
              first_col=1, n_points=11, blank_cols="12"),
     ]
-    s.controls = [dict(control_id="PE1", type="PE only", data_file="pe_only.fcs")]
     return s
 
 
@@ -127,15 +127,13 @@ def test_unparseable_cells_are_reported(tmp_path):
     assert any("must be Y or N" in e for e in errs)
 
 
-def test_missing_no_antibody_well_and_reporter_control(tmp_path):
+def test_missing_no_antibody_well(tmp_path):
     s = good_setup()
     for rec in s.layout:
         rec["blank_cols"] = None
-    s.cell_lines[0]["reporter"] = "GFP"
     _, issues = roundtrip(tmp_path, s)
     warns = messages(issues, "warning")
     assert any("has no no-antibody well" in w for w in warns)
-    assert any("carries GFP but has no reporter-only control" in w for w in warns)
 
 
 def test_parse_cols():
@@ -158,3 +156,22 @@ def test_exp2281_example():
     assert sum("F/P blank: assumed 1" in w for w in messages(issues, "warning")) == 1
     assert any("isotype F/P blank" in w for w in messages(issues, "warning"))
     assert any("DLL3 is Rabbit" in w for w in messages(issues, "warning"))
+
+
+def test_old_workbook_headers_and_controls_sheet_still_read(tmp_path):
+    """A setup made before the FlowJo-side fields were removed: old bead file header, extra Controls sheet."""
+    from openpyxl import load_workbook
+    s = good_setup()
+    s.beads[0]["data_file"] = "Quantbrite PE Beads.xls"
+    p = tmp_path / "old.xlsx"
+    write_setup(p, s)
+    wb = load_workbook(p)
+    ws = wb["Beads"]
+    for c in ws[S.HEADER_ROW]:
+        if str(c.value or "").startswith("Bead export file"):
+            c.value = "Bead data file (.fcs or export)"
+    wb.create_sheet("Controls")
+    wb.save(p)
+    setup, issues = read_setup(p)
+    assert setup.beads[0]["data_file"] == "Quantbrite PE Beads.xls"
+    assert not [i for i in issues if i.level == "error"]
