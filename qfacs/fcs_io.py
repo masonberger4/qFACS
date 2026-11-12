@@ -305,34 +305,6 @@ def gate_folder(folder, setup, out_dir=None):
     bead_names = {Path(str(b.get("data_file"))).stem.lower() for b in setup.beads if b.get("data_file")}
     used = set()
     for wsp in sorted(folder.rglob("*.wsp")):
-        # FlowJo's own saved numbers first (exact FlowJo values, no .fcs needed); re-gate only when they are missing
-        from .wsp_saved import saved_tables
-        try:
-            s_cells, s_beads, missing, n = saved_tables(wsp, pe, live)
-        except Exception as e:  # unreadable XML: fall back to FlowKit
-            s_cells, s_beads, missing, n = {}, {}, [str(e)], []
-        if (s_cells or s_beads) and not missing:
-            notes += n
-            for plate_kw, t in s_cells.items():
-                pid = plates.get(norm_plate(plate_kw)) or (setup.plates[0]["plate_id"] if len(setup.plates) == 1 else None)
-                if not pid:
-                    notes.append(f"{wsp.name}: plate '{plate_kw}' not on the Plates sheet; skipped")
-                    continue
-                cells.append(write_table(t, out_dir / f"{pid}_{wsp.stem}_saved.xlsx"))
-                notes.append(f"{wsp.name}: FlowJo's saved Live count and gMFI used for {len(t.rows)} samples of {pid} (no re-gating)")
-                used |= {p for p in fcs if any(r == p.stem or r.endswith("-" + p.stem) for r in t.rows)}
-            for stem, t in s_beads.items():
-                beads.append(write_table(t, out_dir / f"{stem}.xlsx"))
-                notes.append(f"{wsp.name}: FlowJo's saved bead gate gMFIs used for {stem}")
-                used |= {p for p in fcs if p.stem == stem}
-            continue
-        if missing and not fcs:
-            notes.append(f"{wsp.name}: no saved {pe} Geometric Mean (or counts) for {len(missing)} sample(s), e.g. "
-                         f"{missing[0]}, and no .fcs files to re-gate: in FlowJo add Count and Geometric Mean of {pe} "
-                         "to the Live population (and Geometric Mean to each bead gate), let it recalculate, save")
-            continue
-        if missing:
-            notes.append(f"{wsp.name}: {len(missing)} sample(s) have no saved PE Geometric Mean; re-gating the .fcs files instead")
         dirs = sorted({p.parent for p in fcs})
         if is_bead_workspace(wsp):
             # a bead tube workspace: use its hand-drawn Low / Med Low / Med High / High gates

@@ -181,3 +181,25 @@ def test_wells_sheet_formulas_recalculate_to_engine_values(tmp_path):
                 assert got == pytest.approx(want, rel=1e-6, abs=1e-6)
                 n += 1
     assert n > 200
+
+
+def test_export_file_tied_to_plate_cell_line_and_antibodies(tmp_path):
+    import shutil
+    from qfacs.analysis import match_cell_line
+    from qfacs.wellmap import expand_wells
+    s = v1_setup()
+    wells, _ = expand_wells(s)
+    assert match_cell_line("Plate1 A549.xls", "Plate1", s, wells) == "A549"
+    assert match_cell_line("Plate1_h1975_rep.xls", "Plate1", s, wells) == "H1975"
+    assert match_cell_line("Plate1 H19.xls", "Plate1", s, wells) == "H1975"        # shortened name
+    assert match_cell_line("Plate1.xls", "Plate1", s, wells) is None
+    res = v1_results()
+    by = {d["file"]: d for d in res.data_files}
+    assert by["Plate1 A549.csv"]["cell_line"] == "A549" and by["Plate1 A549.csv"]["named"]
+    assert by["Plate1 A549.csv"]["wells"] > 0 and by["Plate1 A549.csv"]["antibodies"]
+    # a file named for the wrong cell line: its wells are not used for the other line, and it is flagged
+    bad = tmp_path / "Plate1 H1975.csv"
+    shutil.copy(DATA / "Plate1 A549.csv", bad)
+    r = analyze(v1_setup(), [str(bad)], [str(DATA / "Quantbrite PE Beads.csv")])
+    assert any("named for H1975" in i.message for i in r.issues)
+    assert r.data_files[0]["wells"] == 0

@@ -107,6 +107,9 @@ def _analyze(a) -> int:
     res.notes[:0] = gate_notes
     out = a.out or str(Path(a.setup).with_name(f"{setup.experiment.get('experiment_id') or 'qFACS'}_qFACS_results.xlsx"))
     write_results(res, out)
+    for d in res.data_files:
+        print(f"FILE    {d['file']}: {d['plate']}, {d['cell_line']} ({'from file name' if d['named'] else 'from Layout'}), "
+              f"{d['wells']} wells; {d['antibodies']}")
     for i in sorted(res.issues, key=lambda i: i.level != "error"):
         print(i)
     for n in res.notes:

@@ -10,7 +10,7 @@ Phases 1-3 of the build plan: the experiment setup workbook and validator, the a
 FlowJo table exports, and reading .fcs files gated by a FlowJo workspace (.wsp), with automatic Quantibrite bead
 peak gating. Automatic cell gating without a workspace and spectral unmixing (phase 4) come next.
 
-**New data set?** Step-by-step guide: [docs/RUN_NEW_DATASET.md](docs/RUN_NEW_DATASET.md).
+**New data set?** Step-by-step guide (FlowJo Excel exports + setup workbook): [docs/RUN_NEW_DATASET.md](docs/RUN_NEW_DATASET.md).
 
 ## Install
 ```
@@ -55,7 +55,9 @@ python -m qfacs analyze my_setup.xlsx path/to/exports/ [-o results.xlsx]
 ```
 Inputs are FlowJo table exports (.xls, .xlsx, .csv or .txt), one row per sample (named from the well, e.g. `E01-Sample_049`):
 - cell exports with `<gate path> | Geometric Mean (<PE parameter>)` and optionally `<gate path> | Count` for the live gate.
-  A file belongs to the plate whose Plate ID starts its name (`Plate1_A431.xls` -> Plate1).
+  A file belongs to the plate whose Plate ID starts its name (`Plate1_A431.xls` -> Plate1). A cell line named after
+  the plate (`Plate1 A431.xls`) ties the file to that line: wells the Layout gives to another line are skipped and
+  flagged. The Data files sheet lists each file's plate, cell line, wells and antibodies.
 - a bead export (name contains "bead") with gates named Low, Med Low, Med High and High.
 
 The results workbook has Summary (cell line x antibody antigens/cell and flags), Plots, Method (each calculation step in
@@ -108,11 +110,6 @@ files (any subfolder) and the bead tube .fcs in one folder, then
 ```
 python -m qfacs analyze FOLDER/my_setup.xlsx FOLDER
 ```
-- Saved FlowJo values first: when every gated sample in a .wsp has a saved Count and Geometric Mean of the PE
-  parameter on the Live gate (add both statistics to Live in FlowJo and save), those numbers are used as they are,
-  with no .fcs files and no re-gating (`qfacs/wsp_saved.py`). On Exp2290 Set 2 (4 plates) this gives the same
-  antigens/cell as FlowJo's own exports. A bead .wsp with saved Geometric Means on Low, Med Low, Med High, High is
-  read the same way. Only when values are missing are the gates re-applied to the .fcs files, as below.
 - Cells: the workspace's gates are applied with FlowKit. Live count and PE geometric mean per sample are written to
   `FOLDER/qfacs_gated/<Plate ID>_<workspace>_gated.xlsx` in FlowJo export layout. The plate comes from the .fcs
   `plateid` keyword (Plate_001 = Plate1), or the only plate in the setup.

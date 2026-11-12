@@ -80,6 +80,7 @@ class Results:
     wells: list              # WellResult
     fits: list               # FitRow
     settings: dict
+    data_files: list = field(default_factory=list)  # one dict per cell export: file, plate, cell line, wells, antibodies
 
 
 FP_ASSUMED = "F/P assumed 1 (blank in setup)"
@@ -118,6 +119,30 @@ def match_plate(path, plates):
     return None
 
 
+def match_cell_line(path, plate, setup, wells):
+    """Cell line named in an export's file name ('Plate1 U87 MG.xls', 'Plate1_U87.xls' -> 'U87 MG'), or None.
+
+    Looks only at the plate's own cell lines when the plate is known. Matching ignores case, spaces and
+    punctuation, and accepts a shortened name ('U87' for 'U87 MG') when it fits one line only.
+    """
+    rest = _norm(Path(path).stem)
+    if plate:
+        pk = _norm(plate)
+        rest = rest[len(pk):] if rest.startswith(pk) else rest
+        cands = list(dict.fromkeys(w.cell_line for w in wells if w.plate_id == plate))
+    else:
+        cands = [c["cell_line"] for c in setup.cell_lines if c.get("cell_line")]
+    if not rest:
+        return None
+    src = {c.get("cell_line"): c.get("source_id") for c in setup.cell_lines}
+    keys = {c: [k for k in (_norm(c), _norm(src.get(c))) if k] for c in cands}
+    inside = [c for c, ks in keys.items() if any(k in rest for k in ks)]
+    if inside:
+        return max(inside, key=lambda c: len(_norm(c)))
+    short = [c for c, ks in keys.items() if len(rest) >= 3 and any(k.startswith(rest) for k in ks)]
+    return short[0] if len(short) == 1 else None
+
+
 def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None, bead_run_files: dict | None = None,
             parse_issues=None) -> Results:
     """cell_files / bead_files: paths to FlowJo exports. file_plate / bead_run_files: explicit assignments."""
@@ -154,30 +179,49 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
         if res.beads[run].qc != "PASS":
             issues.append(Issue("warning", "Beads", runs[run]["_row"], f"bead run {run}: {res.beads[run].qc}"))
 
-    # ---- cell exports -> per-well stats
-    plate_of = {}
+    # ---- cell exports -> per-well stats; each file is tied to a plate and, from its name, a cell line
+    wells, _ = expand_wells(setup)
+    layout_at = {(w.plate_id, w.well): w for w in wells}
+    stats = {}
     for f in cell_files:
         p = (file_plate or {}).get(f) or match_plate(f, setup.plates)
+        line = match_cell_line(f, p, setup, wells)
+        if not p and line:
+            on = sorted({w.plate_id for w in wells if w.cell_line == line})
+            p = on[0] if len(on) == 1 else None
         if not p:
-            notes.append(f"{Path(f).name}: could not tell which plate it belongs to; skipped (name it '<Plate ID>_...')")
+            issues.append(Issue("warning", "Data", None, f"{Path(f).name}: could not tell which plate it belongs to; "
+                                "skipped (name it '<Plate ID> <cell line>.xls', e.g. 'Plate1 A431.xls')"))
             continue
-        plate_of[f] = p
-    stats = {}
-    for f, plate in plate_of.items():
         try:
             ws, n = well_stats(read_table(f), pe_param, gate)
         except ValueError as e:
             issues.append(Issue("error", "Data", None, str(e)))
             continue
         notes += n
-        for s in ws:
-            key = (plate, s.well)
-            if key in stats:
-                notes.append(f"{plate} {s.well}: found in {stats[key].source} and {s.source}; used the first")
+        used, wrong = [], []
+        for st in ws:
+            lw = layout_at.get((p, st.well))
+            if line and lw and lw.cell_line != line:
+                wrong.append(f"{st.well} ({lw.cell_line})")
                 continue
-            stats[key] = s
-
-    wells, _ = expand_wells(setup)
+            key = (p, st.well)
+            if key in stats:
+                notes.append(f"{p} {st.well}: found in {stats[key].source} and {st.source}; used the first")
+                continue
+            stats[key] = st
+            if lw:
+                used.append(lw)
+        if wrong:
+            issues.append(Issue("warning", "Data", None, f"{Path(f).name} is named for {line} but holds wells the Layout "
+                                f"gives to another cell line: {', '.join(wrong)}; those wells were skipped"))
+        lines = sorted({w.cell_line for w in used})
+        if not line and len(lines) > 1:
+            notes.append(f"{Path(f).name}: no cell line in the file name; wells assigned by the Layout ({', '.join(lines)})")
+        res.data_files.append(dict(
+            file=Path(f).name, plate=p, cell_line=line or ", ".join(lines) or "?", named=bool(line),
+            wells=len(used), extra=len(ws) - len(used) - len(wrong),
+            antibodies=", ".join(dict.fromkeys(w.reagent for w in sorted(used, key=lambda w: (w.row, w.col)) if w.reagent))))
     plates = {p["plate_id"]: p for p in setup.plates}
     min_events = settings["min_live_events"]
     wr_by = {}
@@ -201,9 +245,12 @@ def analyze(setup: Setup, cell_files, bead_files, file_plate: dict | None = None
                     r.flags.append("below Low bead (extrapolated)")
         wr_by[(w.plate_id, w.well)] = r
     res.wells = sorted(wr_by.values(), key=lambda r: (r.well.plate_id, r.well.row, r.well.col))
+    off = defaultdict(list)
     for (plate, well), s in stats.items():
         if (plate, well) not in wr_by:
-            notes.append(f"{plate} {well} ({s.source}) is not in the Layout; ignored")
+            off[(s.source, plate)].append(well)
+    for (src, plate), ws_ in off.items():
+        notes.append(f"{src}: {len(ws_)} well(s) of {plate} not in the Layout, ignored ({ws_[0]}-{ws_[-1]})")
 
     # ---- background (no-antibody wells) and ABC
     blanks = defaultdict(list)       # (plate, row) and (plate, cell line) -> PE values
