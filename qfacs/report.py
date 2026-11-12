@@ -6,8 +6,12 @@ import math
 
 from openpyxl import Workbook
 from openpyxl.chart import Reference, ScatterChart, Series
+from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.chart.marker import Marker
 from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.chart.text import RichText
+from openpyxl.drawing.line import LineProperties
+from openpyxl.drawing.text import CharacterProperties, Paragraph, ParagraphProperties
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -390,6 +394,36 @@ def _beads(ws, res: Results):
     ws.cell(r + 1, 1, "Curve: log10(gMFI) = slope × log10(PE/bead) + intercept;  PE/cell = 10^((log10 gMFI − intercept) / slope).")
 
 
+def _chart_text(size, bold=False):
+    cp = CharacterProperties(sz=size, b=bold, solidFill="404040")
+    return RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+
+
+def _style_chart(ch):
+    """Keep the title, axis titles and legend outside the plot area (Excel overlays them unless told not to)."""
+    grey = LineProperties(solidFill="D9D9D9", w=9525)
+    ch.title.overlay = False
+    for par in ch.title.tx.rich.p:
+        par.pPr = ParagraphProperties(defRPr=CharacterProperties(sz=1200, b=True, solidFill="262626"))
+    for ax in (ch.x_axis, ch.y_axis):
+        ax.delete = False
+        ax.title.overlay = False
+        for par in ax.title.tx.rich.p:
+            par.pPr = ParagraphProperties(defRPr=CharacterProperties(sz=1000, b=False, solidFill="404040"))
+        ax.tickLblPos = "low"  # labels stay at the bottom / left edge, not at the zero crossing
+        ax.txPr = _chart_text(900)
+        ax.majorGridlines.spPr = GraphicalProperties(ln=grey)
+        ax.spPr = GraphicalProperties(ln=LineProperties(solidFill="7F7F7F", w=9525))
+    ch.y_axis.number_format = "#,##0"
+    ch.y_axis.scaling.min = 0
+    ch.legend.position = "b"
+    ch.legend.overlay = False
+    ch.legend.txPr = _chart_text(900)
+    # fixed plot area: room for the title above, axis titles left and below, legend at the bottom
+    ch.plot_area.layout = Layout(manualLayout=ManualLayout(layoutTarget="inner", xMode="edge", yMode="edge",
+                                                           x=0.15, y=0.13, w=0.80, h=0.58))
+
+
 def _plots(wb, res: Results):
     """One line of charts per cell line x antibody: isotype subtracted on the left, NS fit on the right."""
     if not res.fits:
@@ -435,9 +469,13 @@ def _plots(wb, res: Results):
         ch = ScatterChart()
         ch.title = (f"{f.cell_line} · {f.reagent}: " + ("NS fit" if ns else "isotype subtracted")
                     + (" (ND)" if f.status == "ND" else ""))
-        ch.x_axis.title, ch.y_axis.title = "µg/mL", "ABC (total)" if ns else "Specific ABC"
+        ch.x_axis.title, ch.y_axis.title = "Concentration (µg/mL)", "ABC (total)" if ns else "Specific ABC"
         ch.x_axis.scaling.logBase = 10
-        ch.x_axis.delete = ch.y_axis.delete = False
+        if f.points:  # whole decades around the data, so the curve fills the plot
+            xs = [p[0] for p in f.points if p[0] > 0]
+            ch.x_axis.scaling.min = 10 ** math.floor(math.log10(min(xs)))
+            ch.x_axis.scaling.max = 10 ** math.ceil(math.log10(max(xs) * 1.5))
+        _style_chart(ch)
         n = len(f.points)
         if n:
             s = Series(Reference(data, min_col=c0 + 1, min_row=3, max_row=2 + n), Reference(data, min_col=c0, min_row=3, max_row=2 + n),
@@ -451,8 +489,8 @@ def _plots(wb, res: Results):
             curve(ch, c0 + 2, c0 + 3, n_fit, "fit", "C00000")
             if ns:
                 curve(ch, c0 + 2, c0 + 4, n_fit, "saturable part", "7F7F7F", 12700, "dash")
-        ch.height, ch.width = 7, 11
-        ws.add_chart(ch, f"{'I' if ns else 'A'}{3 + 15 * pair_row[(f.cell_line, f.reagent)]}")
+        ch.height, ch.width = 9, 14
+        ws.add_chart(ch, f"{'J' if ns else 'A'}{3 + 19 * pair_row[(f.cell_line, f.reagent)]}")
     data.sheet_state = "hidden"
 
 
