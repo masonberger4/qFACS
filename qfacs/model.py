@@ -12,7 +12,6 @@ class Setup:
     cell_lines: list = field(default_factory=list)
     plates: list = field(default_factory=list)
     layout: list = field(default_factory=list)
-    controls: list = field(default_factory=list)
     source: str = ""
 
     def reagent(self, name):

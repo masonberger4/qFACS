@@ -65,7 +65,25 @@ def read_setup(path):
             setup.experiment = _read_kv(ws, sh, issues)
         else:
             setattr(setup, sh.name.lower(), _read_table(ws, sh, issues))
+    if _old_fit_model_set(wb):
+        issues.append(Issue("warning", "Experiment", None, "the 'Fit model' setting is no longer used: every antibody is "
+                            "reported with both the isotype-subtracted fit and the NS fit"))
     return setup, issues
+
+
+def _old_fit_model_set(wb) -> bool:
+    """True when a workbook made from an older template has a Fit model value filled in (Experiment or Reagents)."""
+    if "Experiment" in wb.sheetnames:
+        ws = wb["Experiment"]
+        for r in range(1, ws.max_row + 1):
+            if _norm_header(ws.cell(r, 1).value).startswith("fit model") and ws.cell(r, 2).value not in (None, ""):
+                return True
+    if "Reagents" in wb.sheetnames:
+        ws = wb["Reagents"]
+        for c in range(1, ws.max_column + 1):
+            if _norm_header(ws.cell(S.HEADER_ROW, c).value).startswith("fit model"):
+                return any(ws.cell(r, c).value not in (None, "") for r in range(S.FIRST_DATA_ROW, ws.max_row + 1))
+    return False
 
 
 def _read_kv(ws, sh, issues):
@@ -83,7 +101,7 @@ def _read_kv(ws, sh, issues):
 
 
 def _read_table(ws, sh, issues):
-    by_header = {_norm_header(f.header): f for f in sh.fields}
+    by_header = {_norm_header(h): f for f in sh.fields for h in (f.header, *f.aliases)}
     cols = {}
     for c in range(1, ws.max_column + 1):
         f = by_header.get(_norm_header(ws.cell(S.HEADER_ROW, c).value))

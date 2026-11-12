@@ -21,7 +21,6 @@ python set1_exports.py Exp2290_Analysis.xlsx Exp2290_qFACS_Setup.xlsx OUT/Set1/c
 # Exp2290_Analysis.xlsx itself refilled (edited at the XML level so his styles, charts, picture and hidden sheets stay)
 python replicas.py Set2 Exp2290_qFACS_Setup2.xlsx Exp2290_Analysis.xlsx OUT/Set2 --beads 1661 16383 72239 197572 \
     --bead-name "Tube_001 (20-Oct-2026)" --plate 1 "02-Nov-2026.wsp" --plate 2 "02-Nov-2026 2.wsp"
-# (gate_export.py re-applies the workspace gates to the .fcs files instead; kept as a cross-check, within about 1 %)
 # both methods + workbooks (reads flowjo_exports when it exists, else cell_line_exports)
 python run_set.py Set2 Exp2290_qFACS_Setup2.xlsx OUT/Set2 "Quantbrite PE Beads.xls"
 # one QuantiBRITE_ABC_calculator.xlsx per cell line (Mase's workbook refilled: beads, unstained-subtracted Live gMFI,

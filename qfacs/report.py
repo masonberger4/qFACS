@@ -60,9 +60,9 @@ def _summary(ws, res: Results):
     exp = res.setup.experiment
     ws["A1"] = f"Antigens per cell: {exp.get('experiment_id') or ''}"
     ws["A1"].font = TITLE_FONT
-    ws["A2"] = ("Antigens/cell = fitted Bmax × valency (3 significant figures). Isotype model: one-site fit after isotype "
-                "subtraction; NS model: total-binding fit Bmax·C/(Kd+C) + NS·C (see Fits). ND = no specific binding. "
-                "Flags are QC notes; no values were excluded.")
+    ws["A2"] = ("Antigens/cell = fitted Bmax × valency (3 significant figures), by both methods. Isotype subtracted: "
+                "one-site fit after subtracting the matched isotype. NS fit: total-binding fit Bmax·C/(Kd+C) + NS·C, no "
+                "isotype. Details on Fits and Method. ND = no specific binding. Flags are QC notes; no values were excluded.")
     ws["A2"].font = Font(italic=True, color="808080")
     r = 3
     lots = {b.get("bead_run"): b.get("kit_lot") for b in res.setup.beads}
@@ -81,34 +81,61 @@ def _summary(ws, res: Results):
     r += 1
     lines = list(dict.fromkeys(f.cell_line for f in res.fits))
     abs_ = list(dict.fromkeys(f.reagent for f in res.fits))
-    by = {(f.cell_line, f.reagent): f for f in res.fits}
+    pairs = res.by_pair
     na = len(abs_)
-    ws.cell(r, 1, "Antigens per cell").font = Font(bold=True, size=12)
-    ws.cell(r, na + 3, "Flags").font = Font(bold=True, size=12)
-    r += 1
-    _hdr(ws, r, ["Cell line"] + abs_)
-    for j, a in enumerate(["Cell line"] + abs_, na + 3):
-        c = ws.cell(r, j, a)
-        c.fill, c.font, c.border = HDR_FILL, HDR_FONT, BOX
-    first = r + 1
-    for i, line in enumerate(lines):
-        rr = first + i
-        ws.cell(rr, 1, line).font = Font(bold=True)
-        ws.cell(rr, na + 3, line).font = Font(bold=True)
-        for j, a in enumerate(abs_, 2):
-            f = by.get((line, a))
-            v = "" if f is None else ("ND" if f.status == "ND" else sig3(f.antigens) if f.antigens is not None else "not fitted")
-            c = ws.cell(rr, j, v)
-            c.number_format, c.border = "#,##0", BOX
-            c.alignment = Alignment(horizontal="right")
-            fc = ws.cell(rr, j + na + 1, "" if f is None else _flagtext(f.flags))
-            fc.border = BOX
-            fc.alignment = Alignment(wrap_text=True, vertical="top")
-    last = first + len(lines) - 1
-    rng = f"{get_column_letter(na + 4)}{first}:{get_column_letter(2 * na + 3)}{last}"
-    tl = f"{get_column_letter(na + 4)}{first}"
-    ws.conditional_formatting.add(rng, FormulaRule(formula=[f'{tl}="OK"'], fill=GRN))
-    ws.conditional_formatting.add(rng, FormulaRule(formula=[f'AND({tl}<>"OK",{tl}<>"")'], fill=RED))
+
+    def table(r, title, cell, fmt="#,##0", flag=None):
+        """One cell line x antibody table at row r (values from cell(pair)), flags to its right. Returns the next row."""
+        ws.cell(r, 1, title).font = Font(bold=True, size=12)
+        if flag:
+            ws.cell(r, na + 3, "Flags").font = Font(bold=True, size=12)
+        r += 1
+        _hdr(ws, r, ["Cell line"] + abs_)
+        first = r + 1
+        if flag:
+            for j, a in enumerate(["Cell line"] + abs_, na + 3):
+                c = ws.cell(r, j, a)
+                c.fill, c.font, c.border = HDR_FILL, HDR_FONT, BOX
+        for i, line in enumerate(lines):
+            rr = first + i
+            ws.cell(rr, 1, line).font = Font(bold=True)
+            if flag:
+                ws.cell(rr, na + 3, line).font = Font(bold=True)
+            for j, a in enumerate(abs_, 2):
+                pair = pairs.get((line, a))
+                c = ws.cell(rr, j, "" if pair is None else cell(pair))
+                c.number_format, c.border = fmt, BOX
+                c.alignment = Alignment(horizontal="right")
+                if flag:
+                    fc = ws.cell(rr, j + na + 1, "" if pair is None else flag(pair))
+                    fc.border = BOX
+                    fc.alignment = Alignment(wrap_text=True, vertical="top")
+        last = first + len(lines) - 1
+        if flag:
+            rng = f"{get_column_letter(na + 4)}{first}:{get_column_letter(2 * na + 3)}{last}"
+            tl = f"{get_column_letter(na + 4)}{first}"
+            ws.conditional_formatting.add(rng, FormulaRule(formula=[f'{tl}="OK"'], fill=GRN))
+            ws.conditional_formatting.add(rng, FormulaRule(formula=[f'AND({tl}<>"OK",{tl}<>"")'], fill=RED))
+        return last + 2
+
+    def value(model):
+        def cell(pair):
+            f = pair.get(model)
+            if f is None:
+                return "no isotype"
+            return "ND" if f.status == "ND" else sig3(f.antigens) if f.antigens is not None else "not fitted"
+        return cell
+
+    def flags(model):
+        return lambda pair: _flagtext(pair[model].flags) if model in pair else "no isotype data: see NS fit"
+
+    def ratio(pair):
+        f = pair.get("NS")
+        return round(f.ns_vs_iso, 2) if f and f.ns_vs_iso is not None else "-"
+
+    r = table(r, "Antigens per cell: isotype subtracted", value("Isotype"), flag=flags("Isotype"))
+    r = table(r, "Antigens per cell: NS fit (no isotype subtraction)", value("NS"), flag=flags("NS"))
+    r = table(r, "NS fit ÷ isotype subtracted", ratio, fmt="0.00")
     ws.column_dimensions["A"].width = 16
     for j in range(2, na + 2):
         ws.column_dimensions[get_column_letter(j)].width = 13
@@ -116,18 +143,14 @@ def _summary(ws, res: Results):
     ws.column_dimensions[get_column_letter(na + 3)].width = 16
     for j in range(na + 4, 2 * na + 4):
         ws.column_dimensions[get_column_letter(j)].width = 36
-    ws.cell(last + 2, 1, f"qfacs {__version__}, {dt.datetime.now():%Y-%m-%d %H:%M}, setup: {res.setup.source}").font = Font(color="808080")
+    ws.cell(r, 1, f"qfacs {__version__}, {dt.datetime.now():%Y-%m-%d %H:%M}, setup: {res.setup.source}").font = Font(color="808080")
 
 
 def _method(ws, res: Results):
     """Plain-language description of every calculation step, pointing to the sheet and columns that hold it."""
     from .analysis import CROSS_TOL, NS_SHARE_MAX
-    from .schema import fit_model_of
     st = res.settings
-    exp = res.setup.experiment
-    abs_ = [r for r in res.setup.reagents if r.get("is_isotype") != "Y" and r.get("name")]
-    ns = [r["name"] for r in abs_ if fit_model_of(r, exp) == "NS"]
-    iso = [r["name"] for r in abs_ if fit_model_of(r, exp) != "NS"]
+    no_iso = sorted({f.reagent for f in res.fits if f.model == "NS" and f.cross is None})
     H = Font(bold=True, size=12, color="1F3864")
     lines = [
         ("How antigens per cell are calculated", TITLE_FONT),
@@ -154,33 +177,35 @@ def _method(ws, res: Results):
         ("ABC = Net PE/cell ÷ F/P (column N), where F/P = PE molecules per antibody from the Reagents sheet (column S). "
          "A blank F/P is taken as 1 and flagged.", None),
         ("", None),
-        ("5. Non-specific binding: one of two fit models per antibody (Fits sheet, column Fit model)", H),
-        ("Isotype model" + (f" (used for: {', '.join(iso)})" if iso else " (not used in this experiment)") + ":", Font(bold=True)),
+        ("5. Non-specific binding: two methods, both reported for every antibody (Fits sheet, column Fit model)", H),
+        ("Isotype subtracted:", Font(bold=True)),
         ("   The matched isotype's ABC at the same concentration (column O; interpolated on log concentration when "
          "concentrations differ) is subtracted: Specific ABC = ABC − isotype ABC (column P).", None),
         ("   Then the one-site fit: Specific ABC = Bmax × C / (Kd + C).", None),
-        ("NS model" + (f" (used for: {', '.join(ns)})" if ns else " (not used in this experiment)") + ":", Font(bold=True)),
-        ("   No isotype is subtracted (column P = ABC). Total binding is fitted instead: "
+        ("NS fit:", Font(bold=True)),
+        ("   No isotype is subtracted. Total binding (ABC, column N) is fitted instead: "
          "ABC = Bmax × C / (Kd + C) + NS × C, with Bmax, Kd and NS all ≥ 0.", None),
         ("   NS × C is the non-specific signal, which rises linearly with antibody concentration. This needs top doses "
          "well past saturation (ideally ≥ 10 × Kd).", None),
         ("The two are never combined: subtracting the isotype and also fitting NS would remove the background twice.", None),
-        ("Cross-check: when the matched isotype was run, the other model is fitted to the same wells and shown on Fits "
-         "(columns Cross-check ...).", None),
+        ("A blank 'Matched isotype' uses the only isotype control run on that cell line, and says so in the flags.", None),
+        ("An antibody with no isotype to use, or whose isotype has no data, gets the NS fit only and is flagged"
+         + (f" (here: {', '.join(no_iso)})." if no_iso else " (none in this experiment)."), None),
         ("", None),
-        ("6. Fit and antigens per cell (Fits sheet)", H),
+        ("6. Fit and antigens per cell (Fits sheet: one row per cell line × antibody × fit model)", H),
         ("Points from replicate plates are pooled per cell line × antibody. The fit is least squares; for a given Kd the "
          "best Bmax (and NS) is exact, so only Kd is searched.", None),
-        ("Antigens/cell = Bmax × valency (column K; blank valency = 1, so antigens/cell = ABC). Kd in nM uses the MW "
+        ("Antigens/cell = Bmax × valency (blank valency = 1, so antigens/cell = ABC). Kd in nM uses the MW "
          "(blank = 150 kDa).", None),
-        ("95 % confidence intervals come from the fit's standard errors (columns M, N and P, Q; NS CI in the NS columns).", None),
+        ("95 % confidence intervals come from the fit's standard errors (Bmax, Kd and, on NS rows, NS).", None),
+        ("Summary shows both results per cell line × antibody and their ratio (NS fit ÷ isotype subtracted).", None),
         ("", None),
         ("7. Flags (Summary and Fits sheets)", H),
         (f"Not saturated: top conc below {st['saturation_k']:g} × Kd, so Bmax is extrapolated. Poor fit: R² < 0.9. "
          "Imprecise Bmax: SE > 25 % of Bmax.", None),
         ("ND: no specific binding (Bmax ≤ 0 or its CI reaches 0).", None),
-        (f"NS model only: Kd below the lowest or above the top dose; non-specific > {NS_SHARE_MAX:.0%} of the top-dose "
-         f"signal; NS and isotype-method results differ by > {CROSS_TOL:.0%}.", None),
+        (f"NS fit only: Kd below the lowest or above the top dose; non-specific > {NS_SHARE_MAX:.0%} of the top-dose signal.", None),
+        (f"Both rows: the two methods differ by > {CROSS_TOL:.0%}, or one gives a value where the other is ND.", None),
         ("Also flagged: missing or mismatched isotype, F/P assumed 1, low events, missing wells, bead QC, top dose above the "
          "High bead.", None),
         ("", None),
@@ -195,29 +220,40 @@ def _method(ws, res: Results):
 
 
 def _fits(ws, res: Results):
-    cols = ["Cell line", "Antibody", "Target", "Clone", "Catalog #", "Lot #", "F/P", "Valency", "Plates", "n points",
-            "Antigens/cell", "Bmax (ABC)", "Bmax 95% CI low", "Bmax 95% CI high", "Kd (µg/mL)", "Kd 95% CI low",
-            "Kd 95% CI high", "Kd (nM)", "R²", "Top conc (µg/mL)", "Top conc / Kd", "Specific ABC at top conc",
-            "Saturation", "Status", "Flags", "Fit model", "NS (ABC per µg/mL)", "NS 95% CI low", "NS 95% CI high",
-            "Non-specific ABC at top conc", "Non-specific share at top conc", "Cross-check model",
-            "Cross-check antigens/cell", "Cross-check Kd (µg/mL)", "Cross-check / main"]
-    _hdr(ws, 1, cols, [12, 11, 14, 10, 12, 10, 7, 8, 9, 7, 12, 12, 12, 12, 10, 10, 10, 9, 8, 10, 9, 12, 30, 10, 60,
-                       9, 11, 11, 11, 12, 11, 10, 12, 10, 10])
+    """One row per cell line x antibody x fit model: the isotype-subtracted row, then the NS-fit row."""
     from openpyxl.comments import Comment
-    ws["W1"].comment = Comment("Specific ABC: isotype-subtracted for the Isotype model; for the NS model, the fitted "
-                               "saturable part Bmax·C/(Kd+C) at the top conc", "qfacs")
-    ws["AG1"].comment = Comment("When isotype data exists: the other model fitted to the same wells (NS model -> isotype "
-                                "method; Isotype model -> NS fit on the unsubtracted ABC). Never both at once.", "qfacs")
+    N0, K3, R4, PCT = "#,##0", "0.000", "0.0000", "0%"
+    cols = [  # header, width, number format
+        ("Cell line", 12, None), ("Antibody", 11, None), ("Fit model", 16, None), ("Target", 14, None), ("Clone", 10, None),
+        ("Catalog #", 12, None), ("Lot #", 10, None), ("F/P", 7, None), ("Valency", 8, None), ("Plates", 9, None),
+        ("n points", 7, None), ("Antigens/cell", 12, N0), ("Bmax (ABC)", 12, N0), ("Bmax 95% CI low", 12, N0),
+        ("Bmax 95% CI high", 12, N0), ("Kd (µg/mL)", 10, K3), ("Kd 95% CI low", 10, K3), ("Kd 95% CI high", 10, K3),
+        ("Kd (nM)", 9, K3), ("R²", 8, R4), ("Top conc (µg/mL)", 10, K3), ("Top conc / Kd", 9, K3),
+        ("Specific ABC at top conc", 12, N0), ("Saturation", 30, None), ("Status", 10, None), ("Flags", 60, None),
+        ("NS (ABC per µg/mL)", 11, N0), ("NS 95% CI low", 11, N0), ("NS 95% CI high", 11, N0),
+        ("Non-specific ABC at top conc", 12, N0), ("Non-specific share at top conc", 11, PCT),
+        ("Other model antigens/cell", 12, N0), ("NS fit ÷ isotype subtracted", 11, "0.00")]
+    _hdr(ws, 1, [c[0] for c in cols], [c[1] for c in cols])
+    at = {c[0]: get_column_letter(j) for j, c in enumerate(cols, 1)}
+    ws[at["Fit model"] + "1"].comment = Comment(
+        "Isotype subtracted: one-site fit of ABC − isotype ABC. NS fit: Bmax·C/(Kd+C) + NS·C on ABC, no isotype. "
+        "Every antibody has both rows; without isotype data only the NS fit row.", "qfacs")
+    ws[at["Specific ABC at top conc"] + "1"].comment = Comment(
+        "Isotype subtracted: ABC − isotype ABC at the top conc. NS fit: the fitted saturable part Bmax·C/(Kd+C) at "
+        "the top conc.", "qfacs")
+    ws[at["Other model antigens/cell"] + "1"].comment = Comment(
+        "Antigens/cell from the other fit model for the same cell line and antibody (its own row has the details).", "qfacs")
     for i, f in enumerate(res.fits, 2):
         g = f.reagent_rec
         fit = f.fit
         nd = f.status == "ND"
         ns_model = f.model == "NS"
         top_spec = f.top_specific
-        if ns_model and not nd and fit.bmax is not None and f.top_conc:
-            top_spec = fit.bmax * f.top_conc / (fit.kd + f.top_conc)
+        if ns_model:
+            top_spec = fit.bmax * f.top_conc / (fit.kd + f.top_conc) if not nd and fit.bmax is not None and f.top_conc else None
         cr = f.cross
-        vals = [f.cell_line, f.reagent, g.get("target"), g.get("clone"), g.get("catalog"), g.get("lot"),
+        vals = [f.cell_line, f.reagent, "NS fit" if ns_model else "Isotype subtracted",
+                g.get("target"), g.get("clone"), g.get("catalog"), g.get("lot"),
                 g.get("fp_ratio") or ("1 (assumed)" if g.get("is_isotype") != "Y" else None),
                 g.get("valency") or 1, ", ".join(f.plates), len(f.points),
                 "ND" if nd else sig3(f.antigens), None if nd else fit.bmax,
@@ -225,50 +261,37 @@ def _fits(ws, res: Results):
                 None if nd else fit.kd, None if nd or not fit.kd_ci else fit.kd_ci[0],
                 None if nd or not fit.kd_ci else fit.kd_ci[1], None if nd else f.kd_nm, None if nd else fit.r2,
                 f.top_conc, None if nd or not fit.kd else f.top_conc / fit.kd, top_spec, f.saturation, f.status,
-                _flagtext(f.flags), f.model,
-                fit.ns if ns_model else None, fit.ns_ci[0] if ns_model and fit.ns_ci else None,
-                fit.ns_ci[1] if ns_model and fit.ns_ci else None, f.ns_top, f.ns_share_top,
-                cr.model if cr else None,
-                ("ND" if cr.nd else sig3(f.cross_antigens)) if cr else None,
-                cr.kd if cr and not cr.nd else None,
-                f.cross_antigens / f.antigens if f.cross_antigens and f.antigens else None]
+                _flagtext(f.flags),
+                fit.ns if ns_model and not nd else None, fit.ns_ci[0] if ns_model and not nd and fit.ns_ci else None,
+                fit.ns_ci[1] if ns_model and not nd and fit.ns_ci else None,
+                f.ns_top if not nd else None, f.ns_share_top if not nd else None,
+                ("ND" if cr.nd else sig3(f.cross_antigens)) if cr else ("no isotype" if ns_model else None),
+                f.ns_vs_iso]
         for j, v in enumerate(vals, 1):
             c = ws.cell(i, j, v)
             c.border = BOX
-            if j in (12, 13, 14, 22):
-                c.number_format = "#,##0"
-            elif j in (11,):
-                c.number_format = "#,##0"
-            elif j in (15, 16, 17, 18, 20, 21):
-                c.number_format = "0.000"
-            elif j == 19:
-                c.number_format = "0.0000"
-            elif j in (27, 28, 29, 30, 33):
-                c.number_format = "#,##0"
-            elif j in (31, 35):
-                c.number_format = "0%"
-            elif j == 34:
-                c.number_format = "0.000"
-    ws.freeze_panes = "C2"
+            if cols[j - 1][2]:
+                c.number_format = cols[j - 1][2]
+    ws.freeze_panes = "D2"
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(cols))}{len(res.fits) + 1}"
 
 
 def _wells(ws, res: Results):
     """One row per well. Calculated columns are live Excel formulas, so each value can be traced cell by cell:
     PE gMFI (input) -> PE/cell (bead curve on the Beads sheet) -> net of the no-antibody well -> / F/P = ABC ->
-    minus the isotype at the same concentration = Specific ABC."""
+    minus the isotype at the same concentration = Specific ABC. ABC feeds the NS fit, Specific ABC the isotype fit."""
     from .analysis import antibody_fp
-    from .schema import fit_model_of
     cols = ["Plate", "Well", "Cell line", "Reagent", "Conc (µg/mL)", "Role", "Point", "Sample", "Source file",
             "Live events", "PE gMFI", "PE/cell", "No-antibody PE/cell", "ABC", "Isotype ABC", "Specific ABC", "Flags",
             "Net PE/cell", "F/P used", "F/P used for isotype"]
     _hdr(ws, 1, cols, [8, 6, 12, 10, 10, 9, 6, 18, 20, 9, 11, 11, 11, 11, 11, 11, 50, 11, 9, 11])
     notes = {"L": "= 10^((LOG10(PE gMFI) − intercept) / slope), bead curve on the Beads sheet",
              "M": "= average PE/cell of the no-antibody well(s) of the same row (or cell line)",
-             "N": "= Net PE/cell ÷ F/P used",
+             "N": "= Net PE/cell ÷ F/P used. Input of the NS fit.",
              "O": "= isotype Net PE/cell at the same concentration (interpolated on log10 conc when the "
                   "concentrations differ) ÷ F/P used for isotype",
-             "P": "= ABC − Isotype ABC (Isotype model); = ABC for NS-model antibodies, whose fit includes "
-                  "non-specific binding (an isotype, if run, is shown for the cross-check only)",
+             "P": "= ABC − Isotype ABC. Input of the isotype-subtracted fit; blank when there is no isotype data "
+                  "(NS fit only)",
              "R": "= PE/cell − No-antibody PE/cell",
              "S": "Input: F/P of the reagent from the setup workbook (1 when left blank)",
              "T": "Input: the isotype's F/P, or the antibody's F/P when the isotype's is blank"}
@@ -294,7 +317,7 @@ def _wells(ws, res: Results):
     def iso_formula(r, i):
         """Isotype net PE at this well's concentration, as a formula over the isotype wells' Net PE/cell cells."""
         w = r.well
-        name = setup.reagent(w.reagent).get("matched_isotype")
+        name = r.iso_name
         rs = iso.get((name, w.cell_line, w.plate_id)) or [
             x for (n, line, _), v in iso.items() if n == name and line == w.cell_line for x in v]
         by = {}
@@ -321,7 +344,6 @@ def _wells(ws, res: Results):
         w = r.well
         reag = setup.reagent(w.reagent) if w.reagent else None
         is_iso = bool(reag) and reag.get("is_isotype") == "Y"
-        ns_model = bool(reag) and not is_iso and fit_model_of(reag, setup.experiment) == "NS"
         b = bead_row.get(plate_run.get(w.plate_id))
         pe = f"=10^((LOG10(K{i})-Beads!$K${b})/Beads!$J${b})" if r.pe is not None and b else r.pe
         blank = net = abc = iso_abc = spec = fp = iso_fp = None
@@ -333,11 +355,9 @@ def _wells(ws, res: Results):
             if r.abc is not None:
                 abc = f"=R{i}/S{i}"
             if not is_iso and r.iso_abc is not None:
-                iso_fp = setup.reagent(reag.get("matched_isotype")).get("fp_ratio") or fp
+                iso_fp = setup.reagent(r.iso_name).get("fp_ratio") or fp
                 iso_abc = f"={iso_formula(r, i)}/T{i}"
-                spec = f"=N{i}" if ns_model else f"=N{i}-O{i}"
-            elif not is_iso and r.specific is not None:
-                spec = f"=N{i}"                               # no isotype to subtract (flagged)
+                spec = f"=N{i}-O{i}"
         vals = [w.plate_id, w.well, w.cell_line, w.reagent or "", w.conc_ug_ml, w.role, w.point, r.sample, r.source,
                 r.count, r.gmfi, pe, blank, abc, iso_abc, spec, _flagtext(r.flags), net, fp, iso_fp]
         for j, v in enumerate(vals, 1):
@@ -371,17 +391,32 @@ def _beads(ws, res: Results):
 
 
 def _plots(wb, res: Results):
+    """One line of charts per cell line x antibody: isotype subtracted on the left, NS fit on the right."""
     if not res.fits:
         return
     data = wb.create_sheet("Plot_Data")
     ws = wb.create_sheet("Plots", 1)
-    ws["A1"] = ("Specific ABC vs antibody concentration, with the one-site fit (log concentration axis). "
-                "NS-model antibodies: total ABC with the Bmax·C/(Kd+C) + NS·C fit.")
+    ws["A1"] = ("Left: specific ABC (isotype subtracted) with the one-site fit. Right: total ABC with the NS fit "
+                "Bmax·C/(Kd+C) + NS·C (dashed: its saturable part). Log concentration axis.")
     ws["A1"].font = TITLE_FONT
+
+    def curve(ch, xcol, ycol, n, title, color, width=19050, dash=None):
+        s = Series(Reference(data, min_col=ycol, min_row=3, max_row=2 + n),
+                   Reference(data, min_col=xcol, min_row=3, max_row=2 + n), title=title)
+        s.marker = Marker("none")
+        s.smooth = True
+        s.graphicalProperties.line.solidFill = color
+        s.graphicalProperties.line.width = width
+        if dash:
+            s.graphicalProperties.line.dashStyle = dash
+        ch.series.append(s)
+
+    pair_row = {key: k for k, key in enumerate(res.by_pair)}
     for i, f in enumerate(res.fits):
-        c0 = 1 + 4 * i
-        data.cell(1, c0, f"{f.cell_line} {f.reagent}")
-        for j, lab in enumerate(["conc", "specific ABC", "fit conc", "fit"]):
+        ns = f.model == "NS"
+        c0 = 1 + 5 * i
+        data.cell(1, c0, f"{f.cell_line} {f.reagent} {f.model}")
+        for j, lab in enumerate(["conc", "ABC" if ns else "specific ABC", "fit conc", "fit", "saturable part"]):
             data.cell(2, c0 + j, lab)
         for k, (x, y) in enumerate(f.points):
             data.cell(3 + k, c0, x)
@@ -394,10 +429,13 @@ def _plots(wb, res: Results):
                 x = 10 ** (lo + (hi - lo) * k / 39)
                 data.cell(3 + k, c0 + 2, x)
                 data.cell(3 + k, c0 + 3, f.fit.predict(x))
+                if ns:
+                    data.cell(3 + k, c0 + 4, f.fit.bmax * x / (f.fit.kd + x))
             n_fit = 40
         ch = ScatterChart()
-        ch.title = f"{f.cell_line} · {f.reagent}" + (" (NS fit)" if f.model == "NS" else "") + (" (ND)" if f.status == "ND" else "")
-        ch.x_axis.title, ch.y_axis.title = "µg/mL", "ABC (total)" if f.model == "NS" else "Specific ABC"
+        ch.title = (f"{f.cell_line} · {f.reagent}: " + ("NS fit" if ns else "isotype subtracted")
+                    + (" (ND)" if f.status == "ND" else ""))
+        ch.x_axis.title, ch.y_axis.title = "µg/mL", "ABC (total)" if ns else "Specific ABC"
         ch.x_axis.scaling.logBase = 10
         ch.x_axis.delete = ch.y_axis.delete = False
         n = len(f.points)
@@ -410,15 +448,11 @@ def _plots(wb, res: Results):
             s.graphicalProperties.line.noFill = True
             ch.series.append(s)
         if n_fit:
-            s = Series(Reference(data, min_col=c0 + 3, min_row=3, max_row=2 + n_fit),
-                       Reference(data, min_col=c0 + 2, min_row=3, max_row=2 + n_fit), title="fit")
-            s.marker = Marker("none")
-            s.smooth = True
-            s.graphicalProperties.line.solidFill = "C00000"
-            s.graphicalProperties.line.width = 19050
-            ch.series.append(s)
+            curve(ch, c0 + 2, c0 + 3, n_fit, "fit", "C00000")
+            if ns:
+                curve(ch, c0 + 2, c0 + 4, n_fit, "saturable part", "7F7F7F", 12700, "dash")
         ch.height, ch.width = 7, 11
-        ws.add_chart(ch, f"{get_column_letter(1 + 8 * (i % 3))}{3 + 15 * (i // 3)}")
+        ws.add_chart(ch, f"{'I' if ns else 'A'}{3 + 15 * pair_row[(f.cell_line, f.reagent)]}")
     data.sheet_state = "hidden"
 
 

@@ -12,8 +12,6 @@ TEMPLATE_VERSION = "1"
 ROWS = "ABCDEFGH"
 NCOLS = 12
 
-FIT_MODELS = ["Isotype", "NS"]
-CONTROL_TYPES = ["Unstained", "PE only", "Live/dead only", "Reporter only", "Other"]
 YN = ["Y", "N"]
 
 
@@ -26,6 +24,7 @@ class Field:
     help: str = ""
     width: int = 14
     choices: tuple = ()  # for type "choice"; "@reagents" etc. = list built from another sheet
+    aliases: tuple = ()  # earlier header texts still accepted when reading a workbook
 
 
 @dataclass(frozen=True)
@@ -38,10 +37,7 @@ class Sheet:
 
 
 # Suggested values pre-filled in a new setup workbook (the analysis uses the same values when a cell is blank).
-SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5,
-             # automatic gating channels (BD FACSDiscover A8 raw detectors)
-             "gate_fsc": "FSC-A", "gate_ssc": "SSC (Violet)-A", "gate_width": "SSC (Violet)-W",
-             "gate_viability": "V6 (515)-A"}
+SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5}
 
 EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("experiment_id", "Experiment ID", required=True),
@@ -49,9 +45,9 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("operator", "Operator"),
     Field("instrument", "Instrument"),
     Field("pe_parameter", "PE parameter (as in the data, e.g. PE-A or B5 (575)-A)",
-          help="The channel the analysis reads. After unmixing this is usually the PE fluorochrome name."),
+          help="The PE channel name exactly as it appears in the FlowJo export column, e.g. Geometric Mean (B5 (575)-A)."),
     Field("live_gate", "Live gate name (last gate of the path)",
-          help="Name of the final gate, e.g. Live. Used to find gMFI and counts in exports."),
+          help="Name of the final gate drawn in FlowJo, e.g. Live. Used to find the gMFI and Count columns in the exports."),
     Field("fixed_after_staining", "Cells fixed after staining? (Y/N)", "yn",
           help="Recorded so fixed and unfixed runs can be compared."),
     Field("min_live_events", "Min live events per well (QC)", "int",
@@ -63,23 +59,6 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("saturation_k", "Saturated when top conc ≥ k × Kd (k)", "number",
           help="Suggested 5 (pre-filled; blank = 5); use 10 for a stricter check. Kd comes from the fit. At 5×Kd ~83% of antigen is bound, at 10×Kd ~91%. "
                "If the top conc is below k×Kd, Bmax is extrapolated and flagged 'not saturated'. Lower k if stock conc limits you."),
-    Field("fit_model", "Fit model default (Isotype / NS)", "choice", choices=tuple(FIT_MODELS),
-          help="Blank = Isotype. Isotype: subtract the matched isotype, then fit Bmax*C/(Kd+C). "
-               "NS: no isotype subtraction; fit total binding Bmax*C/(Kd+C) + NS*C, where NS*C is the non-specific signal. "
-               "NS needs top doses well past saturation (ideally ≥10× Kd, several points on the plateau). "
-               "Each antibody can override this on the Reagents sheet."),
-    Field("gate_fsc", "Auto gating: forward scatter (area)",
-          help="Suggested FSC-A (pre-filled; blank = FSC-A). Only used when a plate has .fcs files but no FlowJo .wsp: "
-               "the program then draws Cells > Single Cells > Live itself, one set of gates per plate and cell line. "
-               "Use the parameter name exactly as in the .fcs file."),
-    Field("gate_ssc", "Auto gating: side scatter (area)",
-          help="Suggested SSC (Violet)-A (pre-filled; blank = SSC (Violet)-A). Y axis of the Cells gate."),
-    Field("gate_width", "Auto gating: singlet width parameter",
-          help="Suggested SSC (Violet)-W (pre-filled; blank = SSC (Violet)-W). Doublets are removed on side scatter area vs width, "
-               "as in the hand-drawn Single Cells gate."),
-    Field("gate_viability", "Auto gating: viability dye parameter (none = no Live gate)",
-          help="Suggested V6 (515)-A (pre-filled; blank = V6 (515)-A), the live/dead dye detector. Live = the dim main peak. "
-               "Type none if no viability dye was used."),
     Field("notes", "Notes", width=60),
 ), help="One value per line. Yellow cells are inputs.")
 
@@ -91,7 +70,8 @@ BEADS = Sheet("Beads", "table", "Quantibrite PE bead runs (one row per bead tube
     Field("pe_med_low", "PE/bead Med-Low", "number", required=True),
     Field("pe_med_high", "PE/bead Med-High", "number", required=True),
     Field("pe_high", "PE/bead High", "number", required=True),
-    Field("data_file", "Bead data file (.fcs or export)", width=30),
+    Field("data_file", "Bead export file", width=30, aliases=("Bead data file (.fcs or export)",),
+          help="Name of the FlowJo bead export for this tube, e.g. Quantbrite PE Beads.xls. Needed when there are several bead runs."),
     Field("notes", "Notes", width=40),
 ), help="PE molecules per bead are lot specific: copy them from the flyer in the kit.")
 
@@ -115,19 +95,15 @@ REAGENTS = Sheet("Reagents", "table", "PE reagents, including isotype controls",
           help="Blank = 1 (antigens/cell reported as ABC)."),
     Field("mw_kda", "MW (kDa)", "number", help="For Kd in nM. Blank = 150."),
     Field("matched_isotype", "Matched isotype (Name)", "choice", choices=("@isotypes",), width=16,
-          help="Isotype row subtracted from this antibody. Optional for NS-fit antibodies: when given and run, "
-               "the isotype-method result is reported next to the NS result as a cross-check."),
-    Field("fit_model", "Fit model (Isotype / NS)", "choice", choices=tuple(FIT_MODELS), width=12,
-          help="Blank = the Experiment sheet's default (Isotype if that is blank too). NS fits non-specific binding "
-               "instead of subtracting an isotype, so no isotype wells are needed."),
+          help="Isotype row subtracted from this antibody for the isotype-subtracted result. The NS-fit result "
+               "(non-specific binding fitted, no isotype) is always reported next to it. Blank = the only isotype run "
+               "on the same cell line is used; with none, or several, only the NS fit is reported."),
     Field("notes", "Notes", width=40),
 ), help="Every value here is lot specific and entered by the user; nothing is pre-filled.")
 
 CELL_LINES = Sheet("Cell_Lines", "table", "Cell lines", (
     Field("cell_line", "Cell line", required=True, width=16),
     Field("source_id", "Source / internal ID"),
-    Field("reporter", "Fluorescent reporter (blank = none)", width=20,
-          help="e.g. GFP. A reporter line needs a reporter-only control for unmixing."),
     Field("notes", "Notes", width=40),
 ))
 
@@ -153,18 +129,7 @@ LAYOUT = Sheet("Layout", "table", "Plate layout: one line per plate row", (
     Field("notes", "Notes", width=40),
 ), help="Points run left to right from the top concentration, each one dilution factor lower.")
 
-CONTROLS = Sheet("Controls", "table", "Controls for gating and unmixing (wells or separate .fcs files)", (
-    Field("control_id", "Control ID", required=True),
-    Field("type", "Type", "choice", required=True, choices=tuple(CONTROL_TYPES)),
-    Field("cell_line", "Cell line (blank = any)", "choice", choices=("@cell_lines",), width=16),
-    Field("plate_id", "Plate ID (if a well)", "choice", choices=("@plates",)),
-    Field("well", "Well (e.g. A12)", width=9),
-    Field("data_file", "Data file (if a tube)", width=30),
-    Field("fluorochrome", "Fluorochrome / reporter", width=16),
-    Field("notes", "Notes", width=40),
-))
-
-SHEETS = (EXPERIMENT, BEADS, REAGENTS, CELL_LINES, PLATES, LAYOUT, CONTROLS)
+SHEETS = (EXPERIMENT, BEADS, REAGENTS, CELL_LINES, PLATES, LAYOUT)
 SHEET_BY_NAME = {s.name: s for s in SHEETS}
 
 # Table layout inside the workbook
@@ -172,13 +137,4 @@ TITLE_ROW = 1
 HELP_ROW = 2
 HEADER_ROW = 4
 FIRST_DATA_ROW = 5
-TABLE_ROWS = {"Beads": 10, "Reagents": 30, "Cell_Lines": 60, "Plates": 40, "Layout": 320, "Controls": 120}
-
-
-def fit_model_of(reagent: dict | None, experiment: dict | None) -> str | None:
-    """'Isotype' or 'NS' for an antibody: its own choice, else the experiment default, else Isotype.
-    None when the value typed is not a known model (validate reports it)."""
-    for v in ((reagent or {}).get("fit_model"), (experiment or {}).get("fit_model")):
-        if v not in (None, ""):
-            return next((m for m in FIT_MODELS if m.lower() == str(v).strip().lower()), None)
-    return "Isotype"
+TABLE_ROWS = {"Beads": 10, "Reagents": 30, "Cell_Lines": 60, "Plates": 40, "Layout": 320}

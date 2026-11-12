@@ -27,10 +27,9 @@ README_LINES = [
     ("Reagents: every PE antibody and isotype with F/P, valency, host and isotype (all lot specific).", None),
     ("   Fit model per antibody: Isotype (default; subtract the matched isotype) or NS (fit non-specific binding, "
      "no isotype wells needed; run top doses well past saturation).", None),
-    ("Cell_Lines: the lines tested, and any fluorescent reporter they carry.", None),
+    ("Cell_Lines: the lines tested.", None),
     ("Plates: plate IDs and which bead run calibrates each plate.", None),
     ("Layout: one line per plate row: cell line, reagent, top concentration, dilution, columns used.", None),
-    ("Controls: unstained, PE-only, live/dead-only and reporter-only controls (wells or separate .fcs files).", None),
     ("", None),
     ("Check the workbook with:  python -m qfacs validate <this file>", Font(name="Consolas")),
 ]

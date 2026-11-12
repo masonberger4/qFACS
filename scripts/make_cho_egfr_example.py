@@ -20,7 +20,7 @@ s.experiment = dict(experiment_id="CHO-EGFR_Plate3", date="2026-11-04", instrume
                     notes="Setup sheet set 11.3.26. Cells acquired 2026-11-04 (05-Nov-2026.wsp: Cells > Single Cells > Live); "
                           "beads Tube_001 acquired 2026-11-05 (09-Nov-2026.wsp). Fixation not stated.")
 s.beads = [dict(bead_run="Beads_2026-11-05", kit_lot="42618 (confirm)", lot_expiry="2022-10-31", pe_low=474, pe_med_low=5359,
-                pe_med_high=23843, pe_high=62336, data_file="Tube_001.fcs", notes=PH)]
+                pe_med_high=23843, pe_high=62336, data_file="Beads Analysis.xls", notes=PH)]
 s.reagents = [
     dict(name="EGFR", target="EGFR", is_isotype="N", host="Mouse", isotype="IgG1, κ", clone="AY13", vendor="BioLegend",
          catalog="352904", lot="B433431", stock_ug_ml=100, matched_isotype="mIgG1",
@@ -31,7 +31,7 @@ s.reagents = [
 ]
 s.cell_lines = [dict(cell_line="CHO-EGFR", notes="CHO cells expressing EGFR")]
 s.plates = [dict(plate_id="CHO EGFR", bead_run="Beads_2026-11-05", acquired="2026-11-04", data_folder="Plate3",
-                 notes="Plate ID = 'plateid' keyword in the .fcs files; FlowJo export 'Plate3 CHO-EGFR.xls'")]
+                 notes="FlowJo export 'Plate3 CHO-EGFR.xls'")]
 for row, ab in (("A", "EGFR"), ("B", "mIgG1")):
     s.layout.append(dict(plate_id="CHO EGFR", row=row, cell_line="CHO-EGFR", reagent=ab, top_conc_ug_ml=50,
                          dilution_factor=1.8, first_col=1, n_points=11, blank_cols="12"))

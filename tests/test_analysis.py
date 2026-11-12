@@ -7,7 +7,7 @@ from qfacs.__main__ import main
 from qfacs.analysis import analyze, interp_log, match_plate
 from qfacs.calc import fit_beads, one_site_fit
 from qfacs.stats_io import bead_gmfis, read_table, well_of, well_stats
-from v1_case import DATA, v1_setup
+from v1_case import DATA, fits_of, v1_setup
 
 ROOT = Path(__file__).resolve().parents[1]
 EX = ROOT / "examples" / "Exp2290_Set2_Plate1"
@@ -25,7 +25,7 @@ def test_reproduces_excel_v1_plate1():
     b = res.beads["Set1"]
     assert b.slope == pytest.approx(0.976528284488864, rel=1e-9)
     assert b.r2 == pytest.approx(0.999547051331197, rel=1e-9)
-    got = {(f.cell_line, f.reagent): f for f in res.fits}
+    got = fits_of(res)
     expected = {("H1975", "CD58"): (80432.02, 2.794119), ("H1975", "B7H3"): (88986.66, 7.506645),
                 ("A549", "CD58"): (56822.98, 1.533251), ("A549", "B7H3"): (62652.08, 6.072388)}
     for key, (bmax, kd) in expected.items():
@@ -88,8 +88,10 @@ def test_missing_isotype_and_missing_data_are_flagged():
     s = v1_setup()
     s.layout = [r for r in s.layout if r["row"] not in "DH"]  # drop the isotype rows
     res = analyze(s, [str(DATA / "Plate1 H1975.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
-    fits = {(f.cell_line, f.reagent): f for f in res.fits}
-    assert "isotype data missing: not subtracted" in fits[("H1975", "CD58")].flags
+    assert fits_of(res) == {}                               # no isotype data: no isotype-subtracted rows at all
+    fits = fits_of(res, "NS")
+    assert "isotype data missing: NS fit only" in fits[("H1975", "CD58")].flags
+    assert fits[("H1975", "CD58")].antigens is not None
     assert "no data for 11 well(s)" in fits[("A549", "CD58")].flags
 
 
@@ -101,12 +103,22 @@ def test_cli_end_to_end(tmp_path):
     wb = load_workbook(out)
     assert wb.sheetnames[:4] == ["Summary", "Plots", "Method", "Fits"]
     method = " ".join(str(c.value) for c in wb["Method"]["A"] if c.value)
-    assert "Bead curve" in method and "Isotype model (used for:" in method and "NS model (not used" in method
-    fits = {(r[0], r[1]): r for r in wb["Fits"].iter_rows(min_row=2, values_only=True)}
-    assert fits[("A431", "DLL3")][10] == "ND"
-    assert fits[("U-87 MG", "CD58")][10] == pytest.approx(43164, rel=0.01)  # F/P 1.24, isotype F/P blank
-    assert "low events in 2 well(s)" in fits[("A431", "CD58")][24]
-    assert "isotype F/P unknown" in fits[("A431", "CD58")][24]
+    assert "Bead curve" in method and "two methods, both reported for every antibody" in method
+    hdr = [c.value for c in wb["Fits"][1]]
+    fits = {(r[0], r[1], r[2]): dict(zip(hdr, r)) for r in wb["Fits"].iter_rows(min_row=2, values_only=True)}
+    assert len(fits) == 12                                            # 2 cell lines x 3 antibodies x 2 fit models
+    iso, ns = "Isotype subtracted", "NS fit"
+    assert fits[("A431", "DLL3", iso)]["Antigens/cell"] == "ND"
+    assert fits[("U-87 MG", "CD58", iso)]["Antigens/cell"] == pytest.approx(43164, rel=0.01)  # F/P 1.24, isotype F/P blank
+    assert isinstance(fits[("U-87 MG", "CD58", ns)]["Antigens/cell"], (int, float))
+    assert fits[("U-87 MG", "CD58", ns)]["Other model antigens/cell"] == fits[("U-87 MG", "CD58", iso)]["Antigens/cell"]
+    assert "low events in 2 well(s)" in fits[("A431", "CD58", iso)]["Flags"]
+    assert "low events in 2 well(s)" in fits[("A431", "CD58", ns)]["Flags"]
+    assert "isotype F/P unknown" in fits[("A431", "CD58", iso)]["Flags"]
+    assert "isotype F/P unknown" not in fits[("A431", "CD58", ns)]["Flags"]
+    summary = [c.value for c in wb["Summary"]["A"] if c.value]
+    assert "Antigens per cell: isotype subtracted" in summary
+    assert "Antigens per cell: NS fit (no isotype subtraction)" in summary and "NS fit ÷ isotype subtracted" in summary
 
 
 def test_blank_isotype_fp_subtracts_in_pe_units():
@@ -115,9 +127,9 @@ def test_blank_isotype_fp_subtracts_in_pe_units():
     for r in s.reagents:
         if r.get("is_isotype") == "Y":
             iso_fp, r["fp_ratio"] = r["fp_ratio"], None
-    ref = {(f.cell_line, f.reagent): f for f in v1_results().fits}
+    ref = fits_of(v1_results())
     res = analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
-    got = {(f.cell_line, f.reagent): f for f in res.fits}
+    got = fits_of(res)
     f = got[("H1975", "CD58")]
     assert "isotype F/P unknown: subtracted in PE units (assumes equal F/P)" in f.flags
     fp = s.reagent("CD58")["fp_ratio"]
@@ -132,9 +144,9 @@ def test_blank_antibody_fp_defaults_to_1_and_is_flagged():
     s = v1_setup()
     fp = s.reagent("CD58")["fp_ratio"]
     s.reagent("CD58")["fp_ratio"] = None
-    ref = {(f.cell_line, f.reagent): f for f in v1_results().fits}
+    ref = fits_of(v1_results())
     res = analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
-    got = {(f.cell_line, f.reagent): f for f in res.fits}
+    got = fits_of(res)
     f = got[("H1975", "CD58")]
     assert "F/P assumed 1 (blank in setup)" in f.flags
     assert all("F/P assumed 1 (blank in setup)" in w.flags for w in res.wells if w.well.reagent == "CD58" and w.abc is not None)
