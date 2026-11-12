@@ -48,6 +48,7 @@ def write_results(res: Results, path):
     _fits(wb.create_sheet("Fits"), res)
     _wells(wb.create_sheet("Wells"), res)
     _beads(wb.create_sheet("Beads"), res)
+    _data_files(wb.create_sheet("Data files"), res)
     _plots(wb, res)
     _issues(wb.create_sheet("Issues"), res)
     wb.save(path)
@@ -419,6 +420,17 @@ def _plots(wb, res: Results):
         ch.height, ch.width = 7, 11
         ws.add_chart(ch, f"{get_column_letter(1 + 8 * (i % 3))}{3 + 15 * (i // 3)}")
     data.sheet_state = "hidden"
+
+
+def _data_files(ws, res: Results):
+    ws.append(["FlowJo export", "Plate", "Cell line", "Cell line from", "Wells used", "Wells not in Layout", "Antibodies (by row)"])
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    for d in res.data_files:
+        ws.append([d["file"], d["plate"], d["cell_line"], "file name" if d["named"] else "Layout", d["wells"], d["extra"],
+                   d["antibodies"]])
+    for col, w in zip("ABCDEFG", (34, 10, 16, 14, 11, 18, 40)):
+        ws.column_dimensions[col].width = w
 
 
 def _issues(ws, res: Results):

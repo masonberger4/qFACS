@@ -10,6 +10,8 @@ Phases 1-3 of the build plan: the experiment setup workbook and validator, the a
 FlowJo table exports, and reading .fcs files gated by a FlowJo workspace (.wsp), with automatic Quantibrite bead
 peak gating. Automatic cell gating without a workspace and spectral unmixing (phase 4) come next.
 
+**New data set?** Step-by-step guide (FlowJo Excel exports + setup workbook): [docs/RUN_NEW_DATASET.md](docs/RUN_NEW_DATASET.md).
+
 ## Install
 ```
 pip install -e ".[dev]"     # Python 3.10+; openpyxl, numpy, scipy, xlrd
@@ -53,7 +55,9 @@ python -m qfacs analyze my_setup.xlsx path/to/exports/ [-o results.xlsx]
 ```
 Inputs are FlowJo table exports (.xls, .xlsx, .csv or .txt), one row per sample (named from the well, e.g. `E01-Sample_049`):
 - cell exports with `<gate path> | Geometric Mean (<PE parameter>)` and optionally `<gate path> | Count` for the live gate.
-  A file belongs to the plate whose Plate ID starts its name (`Plate1_A431.xls` -> Plate1).
+  A file belongs to the plate whose Plate ID starts its name (`Plate1_A431.xls` -> Plate1). A cell line named after
+  the plate (`Plate1 A431.xls`) ties the file to that line: wells the Layout gives to another line are skipped and
+  flagged. The Data files sheet lists each file's plate, cell line, wells and antibodies.
 - a bead export (name contains "bead") with gates named Low, Med Low, Med High and High.
 
 The results workbook has Summary (cell line x antibody antigens/cell and flags), Plots, Method (each calculation step in
