@@ -24,7 +24,7 @@ Yellow cells are inputs, `*` marks required columns, and every column header has
 - **Beads**: one row per bead tube: bead run ID, kit lot, PE/bead for Low, Med Low, Med High, High; optionally the
   bead export's file name.
 - **Reagents**: one row per PE antibody and isotype: name, isotype control Y/N, host, isotype, F/P, valency,
-  matched isotype, fit model (Isotype default, or NS when no isotype was run).
+  matched isotype (blank = the only isotype run on that cell line is used).
 - **Cell_Lines**: one row per line. Use the same name you will put in the export file names (spaces, dashes and
   case don't matter: `Kasumi 2` = `Kasumi-2`; a shortened name like `U87` for `U87 MG` also works).
 - **Plates**: plate ID (`Plate1`, `Plate2`, ...) and the bead run that calibrates it.
@@ -90,9 +90,9 @@ flagged, so a mislabeled file cannot be mixed into the wrong cell line.
 
 | Sheet | What it holds |
 |---|---|
-| Summary | antigens/cell per cell line x antibody, with flags |
-| Plots | titration curves with fits |
-| Fits | Bmax, Kd, 95% CIs, the cross-check method (NS vs isotype) |
+| Summary | antigens/cell per cell line x antibody by both methods (isotype subtracted, NS fit), their ratio, and flags |
+| Plots | titration curves with fits: isotype subtracted on the left, NS fit on the right |
+| Fits | one row per fit model: Bmax, Kd, 95% CIs, flags |
 | Wells | every well: gMFI, PE/cell, ABC, isotype, specific ABC, as live Excel formulas |
 | Beads | bead curve, R², recovery |
 | Data files | each export: plate, cell line, wells used, antibodies |

@@ -83,7 +83,7 @@ def show(d):
     for n in res.notes:
         print("   NOTE", n)
     print(f"  {'cell line':10s} {'Ab':6s} {'engine':>10s} {'eng Kd':>8s} {'eng NS':>10s} {'calc ABC':>10s} {'calc Kd':>8s} {'NS':>8s} {'R2':>6s}  flags")
-    for f in res.fits:
+    for f in (d.get("Isotype") or d["NS"] for d in res.by_pair.values()):  # isotype row; its .cross is the NS fit
         c = calc.get((f.cell_line, f.reagent))
         eng = "ND" if f.status == "ND" else (f"{f.antigens:,.0f}" if f.antigens is not None else "-")
         cross = f"{f.cross_antigens:,.0f}" if f.cross_antigens is not None else ("ND" if f.cross is not None and f.cross.nd else "-")
