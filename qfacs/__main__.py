@@ -4,8 +4,8 @@
   validate SETUP.xlsx [--wells CSV]  check a setup workbook; optionally write the well map
   analyze SETUP.xlsx DATA... [-o OUT.xlsx]  FlowJo exports (files or folders) -> results workbook
       Files whose name contains "bead" are bead exports; others are cell exports named "<Plate ID>_...".
-      A folder holding a FlowJo .wsp and its .fcs files is gated here (gates from the .wsp; bead peaks found
-      automatically in the bead .fcs); the gated tables are written to <folder>/qfacs_gated/.
+      A folder holding a FlowJo .wsp and its .fcs files is gated here with the .wsp's own gates (nothing is
+      gated automatically); the gated tables are written to <folder>/qfacs_gated/.
 """
 from __future__ import annotations
 

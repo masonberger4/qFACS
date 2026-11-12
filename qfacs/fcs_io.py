@@ -3,7 +3,8 @@
 Cells: a FlowJo workspace (.wsp) holds the gates (e.g. Cells > Single Cells > Live). FlowKit applies them to the
 .fcs files; for each sample we report the live count and the PE geometric mean.
 
-Beads: the four Quantibrite peaks are found automatically on log PE (no workspace needed).
+Beads: a bead tube workspace holds hand-drawn Low / Med Low / Med High / High gates. Nothing is gated
+automatically.
 
 Geometric mean, FlowJo style: FlowJo v10 averages the events on the parameter's display transform (the
 biexponential set in the workspace) and transforms the average back. On Exp2290 Plate 1 this reproduces
@@ -177,43 +178,6 @@ def gate_bead_workspace(wsp_path, fcs_dir, pe_param):
     return tables, notes
 
 
-def gate_beads(fcs_path, pe_param, transform=None):
-    """Find the 4 Quantibrite peaks on log PE. Returns (StatsTable, notes)."""
-    _quiet()
-    fk = _fk()
-    s = fk.Sample(str(fcs_path))
-    if pe_param not in s.pnn_labels:
-        raise ValueError(f"{Path(fcs_path).name}: no parameter '{pe_param}'")
-    pe = s.get_events(source="raw")[:, s.pnn_labels.index(pe_param)]
-    x = np.log10(np.clip(pe, 1, None))
-    h, e = np.histogram(x, bins=300, range=(0, 8))
-    c = (e[:-1] + e[1:]) / 2
-    k = np.exp(-0.5 * (np.arange(-6, 7) / 2) ** 2)
-    hs = np.convolve(h, k / k.sum(), "same")
-    peaks = [i for i in range(1, len(hs) - 1) if hs[i] >= hs[i - 1] and hs[i] > hs[i + 1] and hs[i] > 0.02 * hs.max()]
-    notes = []
-    if len(peaks) < 4:
-        raise ValueError(f"{Path(fcs_path).name}: found {len(peaks)} bead peaks on {pe_param}, need 4")
-    if len(peaks) > 4:
-        notes.append(f"{Path(fcs_path).name}: {len(peaks)} peaks found; used the 4 largest")
-    peaks = sorted(sorted(peaks, key=lambda i: -hs[i])[:4])
-    tr = transform or biex()
-    path = "Beads"
-    headers = [f"{path}/{g} | {stat}" for g in BEAD_GATES for stat in ("Count", f"Geometric Mean ({pe_param})")]
-    t = StatsTable(str(fcs_path), headers)
-    row = {}
-    for j, (g, i) in enumerate(zip(BEAD_GATES, peaks)):
-        # gate = valley to valley between neighbouring peaks (0.4 log beyond the outer peaks)
-        lo = c[peaks[j - 1] + int(np.argmin(hs[peaks[j - 1]:i]))] if j else c[i] - 0.4
-        hi = c[i + int(np.argmin(hs[i:peaks[j + 1]]))] if j < 3 else c[i] + 0.4
-        m = (x > lo) & (x < hi)
-        row[f"{path}/{g} | Count"] = int(m.sum())
-        row[f"{path}/{g} | Geometric Mean ({pe_param})"] = flowjo_gmean(pe[m], tr)
-    t.rows[Path(fcs_path).stem] = row
-    notes.append(f"{Path(fcs_path).name}: bead peaks auto-gated on {pe_param} (no workspace gates used)")
-    return t, notes
-
-
 def write_table(t: StatsTable, path):
     from openpyxl import Workbook
     wb = Workbook()
@@ -230,70 +194,12 @@ def write_table(t: StatsTable, path):
     return str(path)
 
 
-def auto_gate(fcs_paths, setup, pe_param, live_gate=None):
-    """Gate .fcs files that have no workspace: learn Cells > Single Cells > Live per plate and cell line
-    (see autogate.py) and apply them to every well. Returns ({plate keyword: StatsTable}, notes)."""
-    from . import autogate
-    from .wellmap import expand_wells
-    _quiet()
-    fk = _fk()
-    exp = setup.experiment
-    ch = {k: (exp.get(k) or v) for k, v in autogate.SUGGESTED_CHANNELS.items()}
-    use_live = str(ch["gate_viability"]).strip().lower() not in ("none", "no", "n/a", "-")
-    plates = {norm_plate(p["plate_id"]): p["plate_id"] for p in setup.plates if p.get("plate_id")}
-    wells, _ = expand_wells(setup)
-    line_of = {(norm_plate(w.plate_id), w.well): w.cell_line for w in wells.values()} if isinstance(wells, dict) else \
-        {(norm_plate(w.plate_id), w.well): w.cell_line for w in wells}
-    notes, samples = [], []
-    for f in fcs_paths:
-        s = fk.Sample(str(f))
-        need = [ch["gate_fsc"], ch["gate_ssc"], ch["gate_width"], pe_param] + ([ch["gate_viability"]] if use_live else [])
-        missing = [n for n in need if n not in s.pnn_labels]
-        if missing:
-            notes.append(f"{Path(f).name}: no parameter(s) {', '.join(missing)} for automatic gating; skipped")
-            continue
-        ev = s.get_events(source="raw")
-        idx = [s.pnn_labels.index(n) for n in need[:3]]
-        via = ev[:, s.pnn_labels.index(ch["gate_viability"])] if use_live else np.full(len(ev), np.nan)
-        arr = np.c_[ev[:, idx], via]
-        plate_kw = str(s.metadata.get("plateid") or "")
-        pid = plates.get(norm_plate(plate_kw)) or (setup.plates[0]["plate_id"] if len(setup.plates) == 1 else plate_kw)
-        well = str(s.metadata.get("wellid") or Path(f).stem[:3]).upper()
-        well = well[0] + str(int(well[1:])).zfill(2) if len(well) > 1 and well[1:].isdigit() else well
-        line = line_of.get((norm_plate(pid), well), "")
-        samples.append((plate_kw, pid, line, Path(f).stem, well, arr, ev[:, s.pnn_labels.index(pe_param)]))
-    tables = {}
-    live_name = live_gate or "Live"
-    path = f"Cells/Single Cells/{live_name}" if use_live else "Cells/Single Cells"
-    groups = {}
-    for smp in samples:
-        groups.setdefault((smp[1], smp[2]), []).append(smp)
-    # wells not in the Layout (controls, empty) use the plate's pooled gates
-    plate_gates = {}
-    for (pid, line), group in sorted(groups.items(), key=lambda kv: (str(kv[0][0]), kv[0][1] == "", str(kv[0][1]))):
-        pool = group if line or len(group) >= 3 else [s_ for s_ in samples if s_[1] == pid]
-        if not line and pid in plate_gates:
-            g = plate_gates[pid]
-        else:
-            g = autogate.learn([s_[5] for s_ in pool], ch, use_live)
-            if pid not in plate_gates:
-                plate_gates[pid] = g
-            notes.append(f"auto gates for {pid} / {line or 'wells not in the Layout'}: {g.describe()}")
-        for plate_kw, _, _, stem, well, arr, pe in group:
-            m = autogate.apply(g, arr)
-            t = tables.setdefault(plate_kw or str(pid), StatsTable("auto-gated .fcs", [f"{path} | Count",
-                                                                              f"{path} | Geometric Mean ({pe_param})"]))
-            name = stem if stem.upper().startswith(well) else f"{well}-{stem}"
-            t.rows[name] = {t.headers[0]: int(m.sum()), t.headers[1]: flowjo_gmean(pe[m], biex())}
-    return tables, notes
-
-
 def gate_folder(folder, setup, out_dir=None):
     """Gate every .wsp + .fcs in folder. Returns (cell export paths, bead export paths, notes).
 
     Cell exports are named '<Plate ID>_<wsp name>_gated.xlsx' (plate from the .fcs 'plateid' keyword, or the only
-    plate in the setup). Bead .fcs files are those named on the Beads sheet or with 'bead' in the name, or any
-    .fcs not used by a workspace when the setup has a single bead run.
+    plate in the setup). Beads are gated only from a bead tube workspace (gates Low, Med Low, Med High, High).
+    Nothing is gated automatically: .fcs files no workspace covers are listed in the notes and left out.
     """
     folder = Path(folder)
     out_dir = Path(out_dir or folder / "qfacs_gated")
@@ -334,22 +240,7 @@ def gate_folder(folder, setup, out_dir=None):
             # a bead .fcs named on the Beads sheet may sit next to the plate's .fcs files
             used |= {p for p in d.glob("*.fcs") if p.stem.lower() not in bead_names and "bead" not in p.name.lower()}
     rest = [p for p in fcs if p not in used]
-    no_wsp = []
-    for p in rest:
-        if p.stem.lower() in bead_names or "bead" in p.name.lower() or (len(setup.beads) == 1 and len(rest) == 1):
-            t, n = gate_beads(p, pe)
-            notes += n
-            beads.append(write_table(t, out_dir / f"{p.stem}.xlsx"))
-        else:
-            no_wsp.append(p)
-    if no_wsp:
-        tables, n = auto_gate(no_wsp, setup, pe, live)
-        notes += n
-        for plate_kw, t in tables.items():
-            pid = plates.get(norm_plate(plate_kw)) or (setup.plates[0]["plate_id"] if len(setup.plates) == 1 else None)
-            if not pid:
-                notes.append(f"plate '{plate_kw}' not on the Plates sheet; skipped")
-                continue
-            cells.append(write_table(t, out_dir / f"{pid}_auto_gated.xlsx"))
-            notes.append(f"auto-gated {len(t.rows)} .fcs files (no FlowJo workspace) for {pid}")
+    if rest:
+        notes.append(f"{len(rest)} .fcs file(s) not covered by a FlowJo workspace were not used (no automatic gating); "
+                     "gate them in FlowJo and export the table")
     return cells, beads, notes

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 fk = pytest.importorskip("flowkit")
-from qfacs.fcs_io import biex, flowjo_gmean, gate_beads, gate_workspace, norm_plate  # noqa: E402
+from qfacs.fcs_io import biex, flowjo_gmean, gate_workspace, norm_plate  # noqa: E402
 from qfacs.stats_io import read_table, well_of, well_stats  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,15 +42,6 @@ def test_workspace_gating_matches_flowjo_export():
     assert len(ratios) == 96
     assert abs(np.median(ratios) - 1) < 0.005 and max(abs(np.array(ratios) - 1)) < 0.02
     assert abs(np.median(counts) - 1) < 0.005 and max(abs(np.array(counts) - 1)) < 0.02
-
-
-@need_data
-def test_bead_autogate_close_to_flowjo():
-    t, _ = gate_beads(DATA / "Tube_001.fcs", "B5 (575)-A")
-    (row,) = t.rows.values()
-    flowjo = dict(Low=1661, **{"Med Low": 16383, "Med High": 72239, "High": 197572})
-    for g, v in flowjo.items():
-        assert row[f"Beads/{g} | Geometric Mean (B5 (575)-A)"] == pytest.approx(v, rel=0.03), g
 
 
 def test_is_bead_workspace(tmp_path):
