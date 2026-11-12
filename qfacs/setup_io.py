@@ -83,7 +83,7 @@ def _read_kv(ws, sh, issues):
 
 
 def _read_table(ws, sh, issues):
-    by_header = {_norm_header(f.header): f for f in sh.fields}
+    by_header = {_norm_header(h): f for f in sh.fields for h in (f.header, *f.aliases)}
     cols = {}
     for c in range(1, ws.max_column + 1):
         f = by_header.get(_norm_header(ws.cell(S.HEADER_ROW, c).value))

@@ -1,21 +1,20 @@
 # qFACS
 
-Automated qFACS workflow: flow cytometry data (.fcs) from the BD FACSDiscover A8 plus an experiment setup sheet,
+Automated qFACS workflow: FlowJo Excel exports of BD FACSDiscover A8 data plus an experiment setup sheet,
 calibrated with BD Quantibrite PE beads, to antigens (antibodies bound) per cell.
 
 Project memory lives on the separate `memory` branch. The earlier Excel-only workbook is kept in `legacy/excel_v1/`.
 
 ## Status
-Phases 1-3 of the build plan: the experiment setup workbook and validator, the analysis engine working from
-FlowJo table exports, and reading .fcs files gated by a FlowJo workspace (.wsp). Gating is done by hand in FlowJo;
-the engine does not gate cells or beads automatically (automatic gating was tried and removed, 2026-11-12).
+The experiment setup workbook and validator, and the analysis engine working from FlowJo table exports.
+Everything on the FlowJo side (unmixing, compensation, gating of cells and beads, the gMFI and count statistics)
+is done by hand in FlowJo. The engine does not read .fcs or .wsp files and does not unmix or gate.
 
 **New data set?** Step-by-step guide (FlowJo Excel exports + setup workbook): [docs/RUN_NEW_DATASET.md](docs/RUN_NEW_DATASET.md).
 
 ## Install
 ```
 pip install -e ".[dev]"     # Python 3.10+; openpyxl, numpy, scipy, xlrd
-pip install -e ".[fcs]"     # optional: FlowKit, to read .fcs + .wsp directly
 ```
 
 ## Setup workbook
@@ -27,10 +26,9 @@ Yellow cells are inputs; column headers carry help notes; `*` marks required col
 | Experiment | setting | Experiment ID, PE parameter, live gate name, fixed after staining (Y/N), QC thresholds |
 | Beads | Quantibrite tube acquired | bead run ID, kit lot, PE molecules per bead for the 4 peaks (from the lot flyer) |
 | Reagents | PE antibody or isotype | name, isotype control?, host, isotype, catalog, lot, F/P, valency, MW, matched isotype |
-| Cell_Lines | cell line | name, source ID, fluorescent reporter |
+| Cell_Lines | cell line | name, source ID |
 | Plates | plate | plate ID (as in the data files), bead run that calibrates it |
 | Layout | plate row | plate, row, cell line, reagent, top final conc, dilution factor, first column, points, no-antibody column(s) |
-| Controls | control well or tube | type (unstained, PE only, live/dead only, reporter only), plate + well or data file |
 
 No reagent or bead values are built in: F/P, valency, concentrations, catalog and lot numbers, and bead PE values
 are always entered by the user. The one fallback: an antibody left with a blank F/P is treated as a 1:1 PE
@@ -45,7 +43,6 @@ Warnings are QC flags that travel with the results, including:
 - isotype mismatch: an antibody's host/isotype differs from its matched isotype, or the isotype was not run on that cell line
 - no no-antibody well for a cell line on a plate
 - cells fixed after staining
-- no PE-only control, or a reporter cell line without a reporter-only control (unmixing)
 
 `--wells` writes one line per well with cell line, reagent and final concentration.
 
@@ -103,19 +100,3 @@ from the source stay blank so the validator asks for them.
 ```
 python -m pytest
 ```
-
-## From .fcs + .wsp
-Put the setup workbook, the FlowJo workspace (.wsp, gated e.g. Cells > Single Cells > Live), the plate's .fcs
-files (any subfolder) and the bead tube .fcs in one folder, then
-```
-python -m qfacs analyze FOLDER/my_setup.xlsx FOLDER
-```
-- Cells: the workspace's gates are applied with FlowKit. Live count and PE geometric mean per sample are written to
-  `FOLDER/qfacs_gated/<Plate ID>_<workspace>_gated.xlsx` in FlowJo export layout. The plate comes from the .fcs
-  `plateid` keyword (Plate_001 = Plate1), or the only plate in the setup.
-- Geometric mean is computed the FlowJo v10 way: averaged on the parameter's biexponential display transform from
-  the workspace, then transformed back. On Exp2290 Plate 1 this matches FlowJo's export to a median +0.2%
-  (90% of wells within 0.5%); counts match to a median of <0.5%. Final antigens/cell agree within 0.3%.
-- Beads: a .wsp holding gates named Low, Med Low, Med High and High (a bead tube workspace) is used for the bead
-  tube; otherwise supply the bead FlowJo export. .fcs files no workspace covers are listed in the notes and not used.
-

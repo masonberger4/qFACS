@@ -4,8 +4,7 @@
   validate SETUP.xlsx [--wells CSV]  check a setup workbook; optionally write the well map
   analyze SETUP.xlsx DATA... [-o OUT.xlsx]  FlowJo exports (files or folders) -> results workbook
       Files whose name contains "bead" are bead exports; others are cell exports named "<Plate ID>_...".
-      A folder holding a FlowJo .wsp and its .fcs files is gated here with the .wsp's own gates (nothing is
-      gated automatically); the gated tables are written to <folder>/qfacs_gated/.
+      Gating, compensation and unmixing are done by hand in FlowJo; .fcs and .wsp files are not read.
 """
 from __future__ import annotations
 
@@ -92,19 +91,7 @@ def _analyze(a) -> int:
     cells = [str(f) for f in files if str(f) not in beads and f.resolve() not in skip
              and "qfacs_results" not in f.name.lower() and not _is_results_workbook(f)]
     setup, parse_issues = read_setup(a.setup)
-    gate_notes = []
-    for d in a.data:
-        p = Path(d)
-        if p.is_dir() and (any(p.rglob("*.wsp")) or any(p.rglob("*.fcs"))):
-            from .fcs_io import gate_folder
-            c, b, n = gate_folder(p, setup)
-            cells += c
-            beads += b
-            gate_notes += n
-            if not b and not beads:
-                gate_notes.append("no bead .fcs or bead export found")
     res = analyze(setup, cells, beads, parse_issues=parse_issues)
-    res.notes[:0] = gate_notes
     out = a.out or str(Path(a.setup).with_name(f"{setup.experiment.get('experiment_id') or 'qFACS'}_qFACS_results.xlsx"))
     write_results(res, out)
     for d in res.data_files:

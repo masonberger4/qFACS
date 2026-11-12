@@ -13,7 +13,6 @@ ROWS = "ABCDEFGH"
 NCOLS = 12
 
 FIT_MODELS = ["Isotype", "NS"]
-CONTROL_TYPES = ["Unstained", "PE only", "Live/dead only", "Reporter only", "Other"]
 YN = ["Y", "N"]
 
 
@@ -26,6 +25,7 @@ class Field:
     help: str = ""
     width: int = 14
     choices: tuple = ()  # for type "choice"; "@reagents" etc. = list built from another sheet
+    aliases: tuple = ()  # earlier header texts still accepted when reading a workbook
 
 
 @dataclass(frozen=True)
@@ -46,9 +46,9 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("operator", "Operator"),
     Field("instrument", "Instrument"),
     Field("pe_parameter", "PE parameter (as in the data, e.g. PE-A or B5 (575)-A)",
-          help="The channel the analysis reads. After unmixing this is usually the PE fluorochrome name."),
+          help="The PE channel name exactly as it appears in the FlowJo export column, e.g. Geometric Mean (B5 (575)-A)."),
     Field("live_gate", "Live gate name (last gate of the path)",
-          help="Name of the final gate, e.g. Live. Used to find gMFI and counts in exports."),
+          help="Name of the final gate drawn in FlowJo, e.g. Live. Used to find the gMFI and Count columns in the exports."),
     Field("fixed_after_staining", "Cells fixed after staining? (Y/N)", "yn",
           help="Recorded so fixed and unfixed runs can be compared."),
     Field("min_live_events", "Min live events per well (QC)", "int",
@@ -76,7 +76,8 @@ BEADS = Sheet("Beads", "table", "Quantibrite PE bead runs (one row per bead tube
     Field("pe_med_low", "PE/bead Med-Low", "number", required=True),
     Field("pe_med_high", "PE/bead Med-High", "number", required=True),
     Field("pe_high", "PE/bead High", "number", required=True),
-    Field("data_file", "Bead data file (.fcs or export)", width=30),
+    Field("data_file", "Bead export file", width=30, aliases=("Bead data file (.fcs or export)",),
+          help="Name of the FlowJo bead export for this tube, e.g. Quantbrite PE Beads.xls. Needed when there are several bead runs."),
     Field("notes", "Notes", width=40),
 ), help="PE molecules per bead are lot specific: copy them from the flyer in the kit.")
 
@@ -111,8 +112,6 @@ REAGENTS = Sheet("Reagents", "table", "PE reagents, including isotype controls",
 CELL_LINES = Sheet("Cell_Lines", "table", "Cell lines", (
     Field("cell_line", "Cell line", required=True, width=16),
     Field("source_id", "Source / internal ID"),
-    Field("reporter", "Fluorescent reporter (blank = none)", width=20,
-          help="e.g. GFP. A reporter line needs a reporter-only control for unmixing."),
     Field("notes", "Notes", width=40),
 ))
 
@@ -138,18 +137,7 @@ LAYOUT = Sheet("Layout", "table", "Plate layout: one line per plate row", (
     Field("notes", "Notes", width=40),
 ), help="Points run left to right from the top concentration, each one dilution factor lower.")
 
-CONTROLS = Sheet("Controls", "table", "Controls (wells or separate tubes; recorded with the run)", (
-    Field("control_id", "Control ID", required=True),
-    Field("type", "Type", "choice", required=True, choices=tuple(CONTROL_TYPES)),
-    Field("cell_line", "Cell line (blank = any)", "choice", choices=("@cell_lines",), width=16),
-    Field("plate_id", "Plate ID (if a well)", "choice", choices=("@plates",)),
-    Field("well", "Well (e.g. A12)", width=9),
-    Field("data_file", "Data file (if a tube)", width=30),
-    Field("fluorochrome", "Fluorochrome / reporter", width=16),
-    Field("notes", "Notes", width=40),
-))
-
-SHEETS = (EXPERIMENT, BEADS, REAGENTS, CELL_LINES, PLATES, LAYOUT, CONTROLS)
+SHEETS = (EXPERIMENT, BEADS, REAGENTS, CELL_LINES, PLATES, LAYOUT)
 SHEET_BY_NAME = {s.name: s for s in SHEETS}
 
 # Table layout inside the workbook
@@ -157,7 +145,7 @@ TITLE_ROW = 1
 HELP_ROW = 2
 HEADER_ROW = 4
 FIRST_DATA_ROW = 5
-TABLE_ROWS = {"Beads": 10, "Reagents": 30, "Cell_Lines": 60, "Plates": 40, "Layout": 320, "Controls": 120}
+TABLE_ROWS = {"Beads": 10, "Reagents": 30, "Cell_Lines": 60, "Plates": 40, "Layout": 320}
 
 
 def fit_model_of(reagent: dict | None, experiment: dict | None) -> str | None:

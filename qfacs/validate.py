@@ -11,7 +11,6 @@ from . import schema as S
 from .model import Issue, Setup
 from .wellmap import expand_wells
 
-WELL_RE = re.compile(r"^([A-Ha-h])\s*0?([1-9]|1[0-2])$")
 
 
 def _norm(s) -> str:
@@ -161,31 +160,6 @@ def validate(setup: Setup) -> list[Issue]:
         if r.get("name") and r["name"] not in used:
             issues.append(Issue("warning", "Reagents", r["_row"], f"{r['name']} is not used in the Layout"))
 
-    # ---- Controls
-    _required(S.CONTROLS, setup.controls, issues)
-    types = set()
-    for c in setup.controls:
-        row = c["_row"]
-        if c.get("type"):
-            if c["type"] not in S.CONTROL_TYPES:
-                issues.append(Issue("error", "Controls", row, f"type '{c['type']}' must be one of {', '.join(S.CONTROL_TYPES)}"))
-            types.add((c["type"], c.get("cell_line")))
-        has_well = bool(c.get("plate_id") or c.get("well"))
-        if not has_well and not c.get("data_file"):
-            issues.append(Issue("error", "Controls", row, "give a plate and well, or a data file"))
-        if has_well:
-            if c.get("plate_id") and c["plate_id"] not in plates:
-                issues.append(Issue("error", "Controls", row, f"plate '{c['plate_id']}' is not on the Plates sheet"))
-            if not c.get("plate_id") or not WELL_RE.match(str(c.get("well") or "")):
-                issues.append(Issue("error", "Controls", row, "a control well needs a Plate ID and a well like A12"))
-        if c.get("cell_line") and c["cell_line"] not in lines:
-            issues.append(Issue("warning", "Controls", row, f"cell line '{c['cell_line']}' is not on the Cell_Lines sheet"))
-    if not any(t == "PE only" for t, _ in types):
-        issues.append(Issue("warning", "Controls", None, "no PE-only control; unmixing PE will not be possible"))
-    for c in setup.cell_lines:
-        if c.get("reporter") and not any(t == "Reporter only" and line in (None, c.get("cell_line")) for t, line in types):
-            issues.append(Issue("warning", "Cell_Lines", c["_row"],
-                                f"{c['cell_line']} carries {c['reporter']} but has no reporter-only control for unmixing"))
     return issues
 
 
