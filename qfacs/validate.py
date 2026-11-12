@@ -67,8 +67,6 @@ def validate(setup: Setup) -> list[Issue]:
                 issues.append(Issue("error", "Beads", b["_row"], "PE/bead values must rise Low < Med-Low < Med-High < High"))
     bead_ids = {b["bead_run"] for b in setup.beads if b.get("bead_run")}
 
-    if exp.get("fit_model") and S.fit_model_of(None, exp) is None:
-        issues.append(Issue("error", "Experiment", None, f"fit model '{exp['fit_model']}' must be Isotype or NS"))
 
     # ---- Reagents
     _required(S.REAGENTS, setup.reagents, issues)
@@ -85,8 +83,6 @@ def validate(setup: Setup) -> list[Issue]:
             else:
                 issues.append(Issue("warning", "Reagents", r["_row"], "F/P blank: assumed 1 (1:1 PE conjugate); enter the lot's F/P "
                                     "from the vial or CoA if it is not 1:1"))
-        if r.get("fit_model") and S.fit_model_of(r, None) is None:
-            issues.append(Issue("error", "Reagents", r["_row"], f"fit model '{r['fit_model']}' must be Isotype or NS"))
         mi = r.get("matched_isotype")
         if mi:
             iso = reagents.get(mi)
@@ -148,10 +144,17 @@ def validate(setup: Setup) -> list[Issue]:
         if r.get("is_isotype") == "Y":
             continue
         mi = r.get("matched_isotype")
-        if S.fit_model_of(r, exp) == "NS":
-            continue                     # no isotype needed; an isotype, if given, is only a cross-check
         if not mi:
-            issues.append(Issue("warning", "Reagents", r["_row"], f"{name} has no matched isotype; isotype background is not subtracted"))
+            pick = isotype_picker(setup, wells)
+            auto = defaultdict(list)
+            for line in sorted(line_set):
+                auto[pick(name, line)[0]].append(line)
+            for iso, lines in auto.items():
+                issues.append(Issue("warning", "Reagents", r["_row"],
+                                    f"{name} has no matched isotype; {iso}, the only isotype run on {', '.join(lines)}, is used"
+                                    if iso else
+                                    f"{name} has no matched isotype and {', '.join(lines)} has no single isotype to use; "
+                                    "only the NS fit is reported"))
             continue
         for line in sorted(line_set - used.get(mi, set())):
             issues.append(Issue("warning", "Reagents", r["_row"],
@@ -161,6 +164,27 @@ def validate(setup: Setup) -> list[Issue]:
             issues.append(Issue("warning", "Reagents", r["_row"], f"{r['name']} is not used in the Layout"))
 
     return issues
+
+
+def isotype_picker(setup: Setup, wells):
+    """Returns pick(antibody name, cell line) -> (isotype name or None, auto).
+
+    The isotype is the antibody's 'Matched isotype'. When that is blank and exactly one isotype control is run
+    on the cell line, that one is used (auto = True), so a run with a single isotype needs no linking by hand.
+    """
+    on_line = defaultdict(set)
+    for w in wells:
+        rec = setup.reagent(w.reagent) if w.reagent else None
+        if rec and rec.get("is_isotype") == "Y":
+            on_line[w.cell_line].add(w.reagent)
+
+    def pick(name, line):
+        rec = setup.reagent(name) or {}
+        if rec.get("matched_isotype"):
+            return rec["matched_isotype"], False
+        only = on_line.get(line, set())
+        return (next(iter(only)), True) if len(only) == 1 else (None, False)
+    return pick
 
 
 def isotype_mismatch(ab: dict, iso: dict):

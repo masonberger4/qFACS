@@ -21,3 +21,8 @@ def v1_setup() -> Setup:
     for i, rec in enumerate(s.beads + s.reagents + s.cell_lines + s.plates + s.layout):
         rec.setdefault("_row", 5 + i)
     return s
+
+
+def fits_of(res, model="Isotype"):
+    """(cell line, antibody) -> FitRow of one fit model; pairs without that model (no isotype data) are left out."""
+    return {k: d[model] for k, d in res.by_pair.items() if model in d}

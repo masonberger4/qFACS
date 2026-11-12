@@ -80,7 +80,7 @@ def _is_results_workbook(f: Path) -> bool:
 
 
 def _analyze(a) -> int:
-    from .analysis import analyze
+    from .analysis import MODEL_LABEL, analyze
     from .report import write_results
     files = []
     for d in a.data:
@@ -103,7 +103,7 @@ def _analyze(a) -> int:
         print("NOTE   ", n)
     for f in res.fits:
         val = "ND" if f.status == "ND" else (f"{f.antigens:,.0f}" if f.antigens is not None else "not fitted")
-        print(f"{f.cell_line:12s} {f.reagent:10s} {val:>12s}  {'; '.join(f.flags) or 'OK'}")
+        print(f"{f.cell_line:12s} {f.reagent:10s} {MODEL_LABEL[f.model]:19s} {val:>12s}  {'; '.join(f.flags) or 'OK'}")
     print(summarize(res.issues), "->", out)
     return 1 if any(i.level == "error" for i in res.issues) else 0
 

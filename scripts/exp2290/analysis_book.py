@@ -330,7 +330,8 @@ def write_analysis(d):
                 "Engine NS-fit cross-check (antigens/cell)", "Calculator: ABC", "Calculator: Kd (µg/mL)",
                 "Calculator: NS (gMFI per µg/mL)", "Calculator: R²", "Calculator vs engine", "Engine flags", "Calculator flags"])
     ws.row_dimensions[5].height = 48
-    fits = sorted(res.fits, key=lambda f: (int(f.plates[0][5:]), lines.index(f.cell_line), reagents.index(f.reagent)))
+    fits = sorted((d.get("Isotype") or d["NS"] for d in res.by_pair.values()),  # isotype row; .cross = NS fit
+                  key=lambda f: (int(f.plates[0][5:]), lines.index(f.cell_line), reagents.index(f.reagent)))
     for i, f in enumerate(fits, 6):
         key = (f.cell_line, f.reagent)
         x = calc.get(key)

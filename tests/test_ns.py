@@ -9,7 +9,7 @@ import pytest
 from qfacs.analysis import analyze
 from qfacs.calc import ns_fit, one_site_fit
 from qfacs.validate import validate
-from v1_case import DATA, v1_setup
+from v1_case import DATA, fits_of, v1_setup
 
 C = list(50 / 1.8 ** np.arange(11)) + [0.0]
 CALC = {  # tab: (observed gMFI, Solver Bmax, Kd, SSE)
@@ -68,64 +68,85 @@ def test_ns_fit_needs_five_points():
     assert ns_fit([1, 2, 3, 4], [1, 2, 3, 4]).nd
 
 
-def _run(s):
-    return {(f.cell_line, f.reagent): f for f in analyze(
-        s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")]).fits}
+def _res(s):
+    return analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
 
 
-def test_isotype_stays_the_default():
-    fits = _run(v1_setup())
-    f = fits[("H1975", "CD58")]
-    assert f.model == "Isotype" and f.fit.model == "isotype" and f.fit.ns is None
+def test_both_models_reported_for_every_antibody():
+    res = _res(v1_setup())
+    iso, ns = fits_of(res), fits_of(res, "NS")
+    assert set(iso) == set(ns) and len(res.fits) == 2 * len(ns)
+    f, g = iso[("H1975", "CD58")], ns[("H1975", "CD58")]
+    # isotype-subtracted row: unchanged from the single-model engine
+    assert f.fit.model == "isotype" and f.fit.ns is None
     assert f.antigens == pytest.approx(80432.02, rel=1e-3)
-    # isotype data exists, so the NS fit on the unsubtracted ABC is reported as a cross-check
-    assert f.cross is not None and f.cross.model == "NS" and f.cross_antigens is not None
-    assert not any("NS" in x for x in f.flags)
-
-
-def test_ns_model_skips_isotype_subtraction_and_cross_checks():
-    s = v1_setup()
-    s.reagent("CD58")["fit_model"] = "NS"
-    res = analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
-    fits = {(f.cell_line, f.reagent): f for f in res.fits}
-    f = fits[("H1975", "CD58")]
-    assert f.model == "NS" and f.fit.model == "NS"
+    # NS row: fitted on ABC, no isotype subtraction, with its own Kd, CI and NS terms
     wells = [w for w in res.wells if w.well.reagent == "CD58" and w.well.cell_line == "H1975" and w.abc is not None]
-    assert all(w.specific == w.abc for w in wells)                     # fit input is ABC, not ABC - isotype
-    assert all(w.iso_sub == pytest.approx(w.abc - w.iso_abc) for w in wells)
-    assert f.points == sorted((w.well.conc_ug_ml, w.abc) for w in wells)
-    assert f.antigens is not None and f.fit.ns is not None and f.fit.ns >= 0
-    assert f.ns_share_top is not None and 0 <= f.ns_share_top <= 1
-    # cross-check = the isotype method on the same wells = the default result
-    assert f.cross.model == "isotype"
-    assert f.cross_antigens == pytest.approx(_run(v1_setup())[("H1975", "CD58")].antigens, rel=1e-9)
-    assert not any("isotype" in x and "not subtracted" in x for x in f.flags)
-    # other antibodies are untouched
-    assert fits[("H1975", "B7H3")].model == "Isotype"
+    assert g.points == sorted((w.well.conc_ug_ml, w.abc) for w in wells)
+    assert f.points == sorted((w.well.conc_ug_ml, w.abc - w.iso_abc) for w in wells)
+    assert g.fit.model == "NS" and g.antigens is not None and g.fit.ns >= 0 and g.fit.bmax_ci and g.kd_nm
+    assert g.ns_share_top is not None and 0 <= g.ns_share_top <= 1
+    # each row points at the other model's result
+    assert f.cross_antigens == g.antigens and g.cross_antigens == f.antigens
+    assert f.ns_vs_iso == g.ns_vs_iso == pytest.approx(g.antigens / f.antigens)
+    assert not any("isotype" in x and "NS fit only" in x for x in g.flags)
 
 
-def test_experiment_default_and_no_isotype_needed():
+def test_no_isotype_gives_ns_only_and_flags_it():
     s = v1_setup()
-    s.experiment["fit_model"] = "NS"
     for r in s.reagents:
         r["matched_isotype"] = None
     s.layout = [r for r in s.layout if r["reagent"] != "mIgG1"]
     s.reagents = [r for r in s.reagents if r["name"] != "mIgG1"]
-    msgs = [i.message for i in validate(s)]
-    assert not any("no matched isotype" in m for m in msgs)
-    fits = _run(s)
-    f = fits[("H1975", "B7H3")]
-    assert f.model == "NS" and f.cross is None and f.antigens is not None
-    assert not any("isotype" in x for x in f.flags)
-    s.reagent("B7H3")["fit_model"] = "isotype"           # per-antibody override, any case
-    assert _run(s)[("H1975", "B7H3")].model == "Isotype"
+    assert any("has no single isotype to use; only the NS fit" in i.message for i in validate(s))
+    res = _res(s)
+    assert fits_of(res) == {}
+    f = fits_of(res, "NS")[("H1975", "B7H3")]
+    assert f.antigens is not None and f.cross is None and f.ns_vs_iso is None
+    assert "no matched isotype: NS fit only" in f.flags
 
 
-def test_bad_fit_model_is_an_error():
+def test_blank_matched_isotype_uses_the_only_isotype_on_the_cell_line():
+    """Mase's Exp2290 setup: isotype rows in the Layout, 'Matched isotype' left blank -> still subtracted, and flagged."""
+    ref = fits_of(_res(v1_setup()))
     s = v1_setup()
-    s.reagent("CD58")["fit_model"] = "Langmuir"
-    errs = [i for i in validate(s) if i.level == "error"]
-    assert any("fit model 'Langmuir'" in i.message for i in errs)
+    for r in s.reagents:
+        r["matched_isotype"] = None
+    assert any("mIgG1, the only isotype run on A549, H1975, is used" in i.message for i in validate(s))
+    res = _res(s)
+    f = fits_of(res)[("H1975", "CD58")]
+    assert f.antigens == pytest.approx(ref[("H1975", "CD58")].antigens, rel=1e-9)
+    assert "matched isotype blank: used mIgG1 (the only isotype on this cell line)" in f.flags
+    assert fits_of(res, "NS")[("H1975", "CD58")].antigens is not None
+
+
+def test_large_difference_between_models_is_flagged_on_both_rows():
+    s = v1_setup()
+    res = _res(s)
+    for d in res.by_pair.values():
+        f, g = d["Isotype"], d["NS"]
+        differ = [x for x in g.flags if "vs isotype-subtracted" in x or "models disagree" in x]
+        assert differ == [x for x in f.flags if "vs isotype-subtracted" in x or "models disagree" in x]
+        if f.ns_vs_iso is not None:
+            assert bool(differ) == (abs(f.ns_vs_iso - 1) > 0.25)
+        elif (f.antigens is None) != (g.antigens is None):
+            assert differ
+
+
+def test_old_fit_model_setting_is_ignored_with_a_warning(tmp_path):
+    from openpyxl import load_workbook
+    from qfacs.setup_io import read_setup
+    from qfacs.template import write_setup
+    p = tmp_path / "s.xlsx"
+    write_setup(p, v1_setup())
+    wb = load_workbook(p)
+    ws = wb["Experiment"]
+    ws.append(["Fit model default (Isotype / NS)", "NS"])
+    wb.save(p)
+    setup, issues = read_setup(p)
+    assert any("no longer used" in i.message and i.level == "warning" for i in issues)
+    assert not any(i.level == "error" for i in issues)
+    assert "fit_model" not in setup.experiment
 
 
 def test_ns_qc_flags():
@@ -141,33 +162,23 @@ def test_ns_qc_flags():
     assert any("above the top dose" in x for x in _ns_flags(f, pts))
 
 
-def test_report_has_ns_columns(tmp_path):
+def test_report_has_a_row_per_model(tmp_path):
     from openpyxl import load_workbook
     from qfacs.report import write_results
-    s = v1_setup()
-    s.reagent("CD58")["fit_model"] = "NS"
-    res = analyze(s, [str(DATA / "Plate1 H1975.csv"), str(DATA / "Plate1 A549.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
+    res = _res(v1_setup())
     out = tmp_path / "r.xlsx"
     write_results(res, out)
     wb = load_workbook(out)
     hdr = [c.value for c in wb["Fits"][1]]
-    rows = {(r[0], r[1]): dict(zip(hdr, r)) for r in wb["Fits"].iter_rows(min_row=2, values_only=True)}
-    r = rows[("H1975", "CD58")]
-    assert r["Fit model"] == "NS" and r["NS (ABC per µg/mL)"] is not None
-    assert r["Cross-check model"] == "isotype" and r["Cross-check antigens/cell"] is not None
-    assert rows[("H1975", "B7H3")]["Fit model"] == "Isotype"
+    rows = {(r[0], r[1], r[2]): dict(zip(hdr, r)) for r in wb["Fits"].iter_rows(min_row=2, values_only=True)}
+    i, n = rows[("H1975", "CD58", "Isotype subtracted")], rows[("H1975", "CD58", "NS fit")]
+    assert n["NS (ABC per µg/mL)"] is not None and i["NS (ABC per µg/mL)"] is None
+    assert i["Kd (µg/mL)"] and n["Kd (µg/mL)"] and i["Bmax 95% CI low"] and n["Bmax 95% CI low"]
+    assert n["Other model antigens/cell"] == i["Antigens/cell"] and i["Other model antigens/cell"] == n["Antigens/cell"]
+    assert i["NS fit ÷ isotype subtracted"] == pytest.approx(n["Antigens/cell"] / i["Antigens/cell"], rel=0.01)
     ws = wb["Wells"]
-    i = next(k for k, w in enumerate(res.wells, 2) if w.well.reagent == "CD58" and w.abc is not None)
-    assert ws[f"P{i}"].value == f"=N{i}"
-
-
-def test_method_sheet_names_ns_antibodies(tmp_path):
-    from openpyxl import load_workbook
-    from qfacs.report import write_results
-    s = v1_setup()
-    s.reagent("CD58")["fit_model"] = "NS"
-    res = analyze(s, [str(DATA / "Plate1 H1975.csv")], [str(DATA / "Quantbrite PE Beads.csv")])
-    out = tmp_path / "r.xlsx"
-    write_results(res, out)
-    text = " ".join(str(c.value) for c in load_workbook(out)["Method"]["A"] if c.value)
-    assert "NS model (used for: CD58)" in text and "Isotype model (used for: B7H3, DLL3)" in text
+    k = next(k for k, w in enumerate(res.wells, 2) if w.well.reagent == "CD58" and w.abc is not None)
+    assert ws[f"P{k}"].value == f"=N{k}-O{k}"
+    assert len(wb["Plots"]._charts) == len(res.fits)
+    text = " ".join(str(c.value) for c in wb["Method"]["A"] if c.value)
+    assert "Isotype subtracted:" in text and "NS fit:" in text and "(none in this experiment)" in text
