@@ -38,10 +38,7 @@ class Sheet:
 
 
 # Suggested values pre-filled in a new setup workbook (the analysis uses the same values when a cell is blank).
-SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5,
-             # automatic gating channels (BD FACSDiscover A8 raw detectors)
-             "gate_fsc": "FSC-A", "gate_ssc": "SSC (Violet)-A", "gate_width": "SSC (Violet)-W",
-             "gate_viability": "V6 (515)-A"}
+SUGGESTED = {"min_live_events": 1000, "bead_r2_min": 0.98, "saturation_k": 5}
 
 EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
     Field("experiment_id", "Experiment ID", required=True),
@@ -68,18 +65,6 @@ EXPERIMENT = Sheet("Experiment", "kv", "Experiment", (
                "NS: no isotype subtraction; fit total binding Bmax*C/(Kd+C) + NS*C, where NS*C is the non-specific signal. "
                "NS needs top doses well past saturation (ideally ≥10× Kd, several points on the plateau). "
                "Each antibody can override this on the Reagents sheet."),
-    Field("gate_fsc", "Auto gating: forward scatter (area)",
-          help="Suggested FSC-A (pre-filled; blank = FSC-A). Only used when a plate has .fcs files but no FlowJo .wsp: "
-               "the program then draws Cells > Single Cells > Live itself, one set of gates per plate and cell line. "
-               "Use the parameter name exactly as in the .fcs file."),
-    Field("gate_ssc", "Auto gating: side scatter (area)",
-          help="Suggested SSC (Violet)-A (pre-filled; blank = SSC (Violet)-A). Y axis of the Cells gate."),
-    Field("gate_width", "Auto gating: singlet width parameter",
-          help="Suggested SSC (Violet)-W (pre-filled; blank = SSC (Violet)-W). Doublets are removed on side scatter area vs width, "
-               "as in the hand-drawn Single Cells gate."),
-    Field("gate_viability", "Auto gating: viability dye parameter (none = no Live gate)",
-          help="Suggested V6 (515)-A (pre-filled; blank = V6 (515)-A), the live/dead dye detector. Live = the dim main peak. "
-               "Type none if no viability dye was used."),
     Field("notes", "Notes", width=60),
 ), help="One value per line. Yellow cells are inputs.")
 
@@ -153,7 +138,7 @@ LAYOUT = Sheet("Layout", "table", "Plate layout: one line per plate row", (
     Field("notes", "Notes", width=40),
 ), help="Points run left to right from the top concentration, each one dilution factor lower.")
 
-CONTROLS = Sheet("Controls", "table", "Controls for gating and unmixing (wells or separate .fcs files)", (
+CONTROLS = Sheet("Controls", "table", "Controls (wells or separate tubes; recorded with the run)", (
     Field("control_id", "Control ID", required=True),
     Field("type", "Type", "choice", required=True, choices=tuple(CONTROL_TYPES)),
     Field("cell_line", "Cell line (blank = any)", "choice", choices=("@cell_lines",), width=16),

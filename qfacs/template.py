@@ -30,7 +30,7 @@ README_LINES = [
     ("Cell_Lines: the lines tested, and any fluorescent reporter they carry.", None),
     ("Plates: plate IDs and which bead run calibrates each plate.", None),
     ("Layout: one line per plate row: cell line, reagent, top concentration, dilution, columns used.", None),
-    ("Controls: unstained, PE-only, live/dead-only and reporter-only controls (wells or separate .fcs files).", None),
+    ("Controls: unstained, PE-only, live/dead-only and reporter-only controls (wells or separate tubes).", None),
     ("", None),
     ("Check the workbook with:  python -m qfacs validate <this file>", Font(name="Consolas")),
 ]

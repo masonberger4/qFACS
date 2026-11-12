@@ -7,8 +7,8 @@ Project memory lives on the separate `memory` branch. The earlier Excel-only wor
 
 ## Status
 Phases 1-3 of the build plan: the experiment setup workbook and validator, the analysis engine working from
-FlowJo table exports, and reading .fcs files gated by a FlowJo workspace (.wsp), with automatic Quantibrite bead
-peak gating. Automatic cell gating without a workspace and spectral unmixing (phase 4) come next.
+FlowJo table exports, and reading .fcs files gated by a FlowJo workspace (.wsp). Gating is done by hand in FlowJo;
+the engine does not gate cells or beads automatically (automatic gating was tried and removed, 2026-11-12).
 
 **New data set?** Step-by-step guide (FlowJo Excel exports + setup workbook): [docs/RUN_NEW_DATASET.md](docs/RUN_NEW_DATASET.md).
 
@@ -116,25 +116,6 @@ python -m qfacs analyze FOLDER/my_setup.xlsx FOLDER
 - Geometric mean is computed the FlowJo v10 way: averaged on the parameter's biexponential display transform from
   the workspace, then transformed back. On Exp2290 Plate 1 this matches FlowJo's export to a median +0.2%
   (90% of wells within 0.5%); counts match to a median of <0.5%. Final antigens/cell agree within 0.3%.
-- Beads: if a .wsp holds gates named Low, Med Low, Med High and High (a bead tube workspace), those hand-drawn
-  gates are used. Otherwise the bead .fcs (named on the Beads sheet, containing "bead", or the only .fcs left over) is gated
-  automatically: the four peaks on log PE, valley to valley. On Exp2290 this is within 3% of the manual FlowJo gates.
+- Beads: a .wsp holding gates named Low, Med Low, Med High and High (a bead tube workspace) is used for the bead
+  tube; otherwise supply the bead FlowJo export. .fcs files no workspace covers are listed in the notes and not used.
 
-## From .fcs only (no FlowJo workspace)
-Put the setup workbook, the plate's .fcs files and the bead tube .fcs in one folder and run the same command.
-Any .fcs not covered by a .wsp is gated automatically (`qfacs/autogate.py`), the way a FlowJo group gate works:
-one set of Cells > Single Cells > Live gates is learned per plate and cell line from all of that line's wells
-pooled, then applied to every well.
-- Cells: main FSC-A / SSC-A population (density hull) above a debris cut at the valley below the main log FSC-A
-  peak (never below 35% of the FSC-A mode), and an SSC-A floor 0.6 log below the SSC-A mode.
-- Single Cells: SSC-W below its main peak + 3 sigma (narrow side), and at least 1.3 x the peak.
-- Live: viability dye (V6 (515)-A) below mode + 2.5 x the live peak's dim-side width, tilted with SSC like a
-  hand-drawn V6 vs SSC gate. Type `none` on the
-  Experiment sheet when no dye was used.
-- Channels are set on the Experiment sheet (A8 defaults pre-filled). The learned gates are listed in the
-  results' notes.
-- Check against Mase's hand gates (same .fcs files), antigens/cell auto vs hand-gated, 5 cell lines on 3 plates:
-  CHO-EGFR EGFR +3.0%; U-87 MG CD58 +3.0%, B7H3 +3.5%; A431 CD58 -2.0%, B7H3 -2.7%; MCF7 CD58 +1.8%,
-  B7H3 -1.6%; FaDu CD58 -5.2%, B7H3 -3.2%.
-- With no workspace, PE gMFI uses the default biex display transform (positive 6.45, width -1000). FlowJo's gMFI
-  depends on the transform set in each workspace, so expect a few % difference from a FlowJo export.
