@@ -1,0 +1,50 @@
+name: Build qFACS app
+
+# Builds the double-click Windows program (qFACS.exe: Python and all libraries inside, nothing to install).
+# - pull requests touching the app or the engine, and manual runs: the .exe is attached to the run as an artifact
+# - a published release tag (v*): the .exe is also attached to that release, where teammates download it
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: ["qfacs/**", "packaging/**", "pyproject.toml", ".github/workflows/build-app.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install . pyinstaller pytest
+      - name: Tests
+        run: python -m pytest -q
+      - name: Build qFACS.exe
+        run: pyinstaller --onefile --console --name qFACS --paths . --distpath dist packaging/qfacs_app.py
+      - name: Smoke test the built program on the example data
+        shell: bash
+        run: |
+          mkdir smoke
+          cp examples/Exp2290_Set2_Plate1/*.xls examples/Exp2290_Set2_Plate1/Exp2290_Set2_setup.xlsx smoke/
+          ./dist/qFACS.exe analyze smoke/Exp2290_Set2_setup.xlsx smoke
+          test -f smoke/Exp2290_Set2_qFACS_results.xlsx
+          ./dist/qFACS.exe app --no-browser --port 8765 &
+          sleep 15
+          curl -sf http://localhost:8765/ | grep -q "Run analysis"
+          curl -sf -o template.xlsx http://localhost:8765/api/template
+          test -s template.xlsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qFACS-windows
+          path: dist/qFACS.exe
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/qFACS.exe
