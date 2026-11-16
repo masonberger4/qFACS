@@ -2,7 +2,7 @@
 
     python run_set.py SET_ID LAB_SETUP.xlsx OUT_DIR BEAD_EXPORT
 
-OUT_DIR/flowjo_exports/ (Sets 2, 3: written by replicas.py / wsp_export.py from the .wsp) or
+OUT_DIR/flowjo_exports/ (Sets 2, 3: the FlowJo Table Editor exports) or
 OUT_DIR/cell_line_exports/ (Set 1: set1_exports.py) must already hold the per cell line exports ('Plate1 A549.xls', ...).
 
 Writes into OUT_DIR:
@@ -31,7 +31,7 @@ from qfacs.template import write_setup  # noqa: E402
 
 def run(set_id, lab_xlsx, out_dir, bead_export):
     out_dir = Path(out_dir)
-    fj = out_dir / "flowjo_exports"         # FlowJo's own table read from the .wsp (has the Live Count for the low-events QC)
+    fj = out_dir / "flowjo_exports"         # FlowJo's own table export (has the Live Count for the low-events QC)
     exports = sorted((fj if fj.is_dir() else out_dir / "cell_line_exports").glob("Plate*.xls"))
     bead_file = out_dir / Path(bead_export).name
     if Path(bead_export).resolve() != bead_file.resolve():

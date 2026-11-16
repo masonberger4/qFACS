@@ -25,7 +25,7 @@ import xlrd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import abc_calc  # noqa: E402
-from replicas import n, num, replace_cell  # noqa: E402
+from analysis_from_exports import n, num, replace_cell  # noqa: E402
 from run_set import run  # noqa: E402
 
 from qfacs.calc import BEAD_KEYS  # noqa: E402
