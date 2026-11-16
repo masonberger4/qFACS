@@ -3,8 +3,7 @@
     sample | Cells freq | Cells/Single Cells freq | .../Live freq | .../Live gMFI (PE) | .../Live Count
     ... one row per well ..., then Mean and SD.
 
-Used by wsp_export.py, replicas.py and set1_exports.py. The part that re-applied a workspace's gates to .fcs files
-was removed: gating is done by hand in FlowJo.
+Used by set1_exports.py.
 """
 from __future__ import annotations
 
@@ -12,7 +11,6 @@ import statistics
 from pathlib import Path
 
 PE = "B5 (575)-A"
-SKIP_GROUPS = {"all samples", "compensation"}
 
 def fj_round(v):
     """FlowJo shows gMFI as whole numbers above 1000 and 3 significant figures below."""
