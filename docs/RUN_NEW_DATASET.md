@@ -56,7 +56,24 @@ line, reagent and concentration, so you can check the plate map.
 Upload the setup workbook and the export files to the project and ask in a new thread:
 "Run qFACS on <experiment> with <setup file>". Results come back as a workbook.
 
-### Option B: on your computer
+### Option B: the qFACS app (no command line)
+1. Start qFACS:
+   - **Windows, nothing to install:** download `qFACS.exe` from the repository's
+     [Releases](https://github.com/masonberger4/qFACS/releases) page (or wherever your team keeps it) and double-click it.
+     The first start takes a few seconds. Windows may show "Windows protected your PC" because the program is not
+     signed: choose **More info > Run anyway**.
+   - **With Python installed (Windows, Mac, Linux):** after the one-time install in Option C, run `python -m qfacs app`.
+2. A small window opens and stays open ("qFACS is running"), and the qFACS page opens in your browser. The page is
+   served by your own computer: files are not sent anywhere.
+3. On the page: choose the setup workbook (**Check setup** shows errors and warnings), choose all the export files
+   (cells and beads) at once, and press **Run analysis**.
+4. The page shows antigens per cell with flags, what each file was understood as, and any issues. Press
+   **Download results workbook** for the full Excel results (it lands in your Downloads folder).
+5. Close the small qFACS window to quit.
+
+A blank setup template can be downloaded from the page (step 1 on the page).
+
+### Option C: command line on your computer
 One-time install (Python 3.10 or newer):
 ```
 git clone https://github.com/masonberger4/qFACS

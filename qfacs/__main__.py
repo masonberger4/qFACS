@@ -5,6 +5,7 @@
   analyze SETUP.xlsx DATA... [-o OUT.xlsx]  FlowJo exports (files or folders) -> results workbook
       Files whose name contains "bead" are bead exports; others are cell exports named "<Plate ID>_...".
       Gating, compensation and unmixing are done by hand in FlowJo; .fcs and .wsp files are not read.
+  app [--port N] [--no-browser]  the same steps as a page in your browser (no command line needed after this)
 """
 from __future__ import annotations
 
@@ -13,9 +14,9 @@ import csv
 import sys
 from pathlib import Path
 
-from .setup_io import read_setup
+from .runner import check_setup
 from .template import write_setup
-from .validate import summarize, validate
+from .validate import summarize
 from .wellmap import expand_wells
 
 
@@ -36,7 +37,15 @@ def main(argv=None) -> int:
     z.add_argument("data", nargs="+", help="export files or folders")
     z.add_argument("-o", "--out", help="results workbook (default: <Experiment ID>_qFACS_results.xlsx next to the setup)")
     z.add_argument("--beads", nargs="*", default=[], help="bead export files, when their names lack 'bead'")
+    g = sub.add_parser("app", help="open qFACS as a page in your browser")
+    g.add_argument("--port", type=int, default=8765)
+    g.add_argument("--host", default="127.0.0.1", help="0.0.0.0 serves the page to other computers on the network")
+    g.add_argument("--no-browser", action="store_true")
     a = ap.parse_args(argv)
+
+    if a.cmd == "app":
+        from .app import serve
+        return serve(a.host, a.port, not a.no_browser)
 
     if a.cmd == "analyze":
         return _analyze(a)
@@ -46,9 +55,8 @@ def main(argv=None) -> int:
         print("wrote", a.out)
         return 0
 
-    setup, issues = read_setup(a.setup)
-    issues = issues + validate(setup)
-    for i in sorted(issues, key=lambda i: (i.level != "error", i.sheet, i.row or 0)):
+    setup, issues = check_setup(a.setup)
+    for i in issues:
         print(i)
     print(summarize(issues))
     if a.wells:
@@ -62,49 +70,11 @@ def main(argv=None) -> int:
     return 1 if any(i.level == "error" for i in issues) else 0
 
 
-EXTS = {".xls", ".xlsx", ".csv", ".txt", ".tsv"}
-
-
-def _is_results_workbook(f: Path) -> bool:
-    """True for a qFACS results workbook (Summary + Fits sheets), so a re-run does not read old results as data."""
-    if f.suffix.lower() != ".xlsx":
-        return False
-    try:
-        from openpyxl import load_workbook
-        wb = load_workbook(f, read_only=True)
-        names = set(wb.sheetnames)
-        wb.close()
-        return {"Summary", "Fits"} <= names
-    except Exception:
-        return False
-
-
 def _analyze(a) -> int:
-    from .analysis import MODEL_LABEL, analyze
-    from .report import write_results
-    files = []
-    for d in a.data:
-        p = Path(d)
-        files += sorted(x for x in p.iterdir() if x.suffix.lower() in EXTS and not x.name.startswith("~$")) if p.is_dir() else [p]
-    beads = [str(Path(b)) for b in a.beads] + [str(f) for f in files if "bead" in f.name.lower()]
-    skip = {Path(a.setup).resolve()} | ({Path(a.out).resolve()} if a.out else set())
-    cells = [str(f) for f in files if str(f) not in beads and f.resolve() not in skip
-             and "qfacs_results" not in f.name.lower() and not _is_results_workbook(f)]
-    setup, parse_issues = read_setup(a.setup)
-    res = analyze(setup, cells, beads, parse_issues=parse_issues)
-    out = a.out or str(Path(a.setup).with_name(f"{setup.experiment.get('experiment_id') or 'qFACS'}_qFACS_results.xlsx"))
-    write_results(res, out)
-    for d in res.data_files:
-        print(f"FILE    {d['file']}: {d['plate']}, {d['cell_line']} ({'from file name' if d['named'] else 'from Layout'}), "
-              f"{d['wells']} wells; {d['antibodies']}")
-    for i in sorted(res.issues, key=lambda i: i.level != "error"):
-        print(i)
-    for n in res.notes:
-        print("NOTE   ", n)
-    for f in res.fits:
-        val = "ND" if f.status == "ND" else (f"{f.antigens:,.0f}" if f.antigens is not None else "not fitted")
-        print(f"{f.cell_line:12s} {f.reagent:10s} {MODEL_LABEL[f.model]:19s} {val:>12s}  {'; '.join(f.flags) or 'OK'}")
-    print(summarize(res.issues), "->", out)
+    from .runner import report_lines, run_analysis
+    res, out = run_analysis(a.setup, a.data, a.out, a.beads)
+    for line in report_lines(res, out):
+        print(line)
     return 1 if any(i.level == "error" for i in res.issues) else 0
 
 

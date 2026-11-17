@@ -46,6 +46,18 @@ Warnings are QC flags that travel with the results, including:
 
 `--wells` writes one line per well with cell line, reagent and final concentration.
 
+## App (no command line)
+```
+python -m qfacs app
+```
+opens qFACS as a page in the browser: choose the setup workbook and the FlowJo exports, press Run, see antigens per
+cell with flags and download the results workbook. It is a small server on your own computer (`qfacs/app.py`, standard
+library only); files are not sent anywhere. Teammates without Python use `qFACS.exe`, a single double-click Windows
+program with Python and all libraries inside. It is built by the "Build qFACS app" GitHub workflow
+(`.github/workflows/build-app.yml`): publishing a release with a tag like `v0.2.0` attaches `qFACS.exe` to that release;
+a manual run of the workflow gives it as a downloadable artifact. Run with arguments, the same program is the command
+line (`qFACS.exe analyze setup.xlsx folder`).
+
 ## Analyze FlowJo exports
 ```
 python -m qfacs analyze my_setup.xlsx path/to/exports/ [-o results.xlsx]
